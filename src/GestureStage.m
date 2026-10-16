@@ -280,21 +280,22 @@ static CGFloat widthOf(NSString *string, CGFloat size, NSFontWeight weight) {
     // The pill: what Buddial shows at each moment.
     NSString *status = nil;
     NSColor *dot = NSColor.systemBlueColor;
-    BOOL listening = NO;
     if (touching >= 0) {
         // While held, the pill says what letting go would do, as in the app: send until the hold
         // time (or, with no speech, until 0.95 s), listening once words are heard, undo after that.
         double held = t - kTouches[touching].down;
         if (silent && held >= kSilentHold) { status = @"Release to undo"; dot = NSColor.systemOrangeColor; }
         else if (tap || silent || held < kHoldTime) status = @"Release to send ↵";
-        else { status = @"Listening"; dot = NSColor.systemRedColor; listening = YES; }
+        else { status = @"Listening"; dot = NSColor.systemRedColor; }
     }
     else if (during(t, kTouches[0].up, firstLands) || during(t, kTouches[2].up, secondLands)) status = @"Transcribing…";
     else if (during(t, firstLands, firstLands + .8) || during(t, secondLands, secondLands + .8)) { status = @"Inserted"; dot = NSColor.systemGreenColor; }
     else if (during(t, sent, sent + .8)) status = @"Sent ↵";
     else if (during(t, removed, removed + .8)) status = @"Deleted";
     BOOL speaking = during(t, kFirstWords[0], kFirstWords[kWordCount - 1] + .45) || during(t, kSecondWords[0], kSecondWords[kWordCount - 1] + .4);
-    CGFloat textWidth = status ? widthOf(status, 12, NSFontWeightSemibold) + 4 : 0, barsWidth = listening ? 5 * 2.5 + 4 * 2.5 + 10 : 0;
+    // While held, every pill keeps the voice bars: the mic is always listening, whatever release will do.
+    BOOL holding = touching >= 0;
+    CGFloat textWidth = status ? widthOf(status, 12, NSFontWeightSemibold) + 4 : 0, barsWidth = holding ? 5 * 2.5 + 4 * 2.5 + 10 : 0;
     self.pill.bounds = CGRectMake(0, 0, 26 + textWidth + barsWidth + 12, 28);
     self.pill.position = CGPointMake(CGRectGetMidX(kField), 22);
     self.pill.opacity = status ? 1 : 0;
@@ -303,9 +304,9 @@ static CGFloat widthOf(NSString *string, CGFloat size, NSFontWeight weight) {
     self.pillText.frame = CGRectMake(26, 6, textWidth, 16);
     [self.bars enumerateObjectsUsingBlock:^(CALayer *bar, NSUInteger i, BOOL *stop) {
         (void)stop;
-        double level = speaking && listening ? .3 + .7 * fabs(sin(t * (7 + i * 2.1) + i * 1.4)) : .15;
+        double level = speaking && holding ? .3 + .7 * fabs(sin(t * (7 + i * 2.1) + i * 1.4)) : .15;
         CGFloat height = 2 + 12 * level;
-        bar.hidden = !listening;
+        bar.hidden = !holding;
         bar.frame = CGRectMake(26 + textWidth + 8 + i * 5, 14 - height / 2, 2.5, height);
     }];
     [CATransaction commit];

@@ -83,7 +83,7 @@
 }
 - (void)showListening { [self present:@"Listening" color:NSColor.systemRedColor bars:YES]; }
 - (void)showWorking:(NSString *)text { [self present:text color:NSColor.systemBlueColor bars:NO]; }
-- (void)showHint:(NSString *)text color:(NSColor *)color { [self present:text color:color bars:NO]; }
+- (void)showHint:(NSString *)text color:(NSColor *)color { [self present:text color:color bars:YES]; }
 - (void)setLevel:(double)db {
     if (self.bars.hidden) return;
     self.bars.level = MIN(1, MAX(0, (db + 55) / 40));
