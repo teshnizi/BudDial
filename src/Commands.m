@@ -15,9 +15,9 @@ static NSString *plainWords(NSString *text) {
     NSString *plain = plainWords(transcript);
     if ([@[@"scratch that", @"delete that", @"undo that"] containsObject:plain]) { command.kind = APCommandScratch; return command; }
     if ([@[@"new line", @"newline"] containsObject:plain]) { command.kind = APCommandNewLine; return command; }
-    // "Spotlight" (or "Spot light") as the first word, then the query as said, minus the
-    // punctuation Whisper puts around it.
-    NSRegularExpression *spotlight = [NSRegularExpression regularExpressionWithPattern:@"^\\s*spot\\s?light(?![\\p{L}\\p{N}])[\\s\\p{P}]*(.*?)[\\s\\p{P}]*$"
+    // "Spotlight" as the first word, then the query as said, minus the punctuation Whisper puts
+    // around it. Whisper has written the word as "Spot light", "Spot white" and "Smart white".
+    NSRegularExpression *spotlight = [NSRegularExpression regularExpressionWithPattern:@"^\\s*(?:spot\\s?(?:light|lite|white)s?|smart\\s?white)(?![\\p{L}\\p{N}])[\\s\\p{P}]*(.*?)[\\s\\p{P}]*$"
                                                                               options:NSRegularExpressionCaseInsensitive | NSRegularExpressionDotMatchesLineSeparators error:nil];
     NSTextCheckingResult *match = [spotlight firstMatchInString:transcript options:0 range:NSMakeRange(0, transcript.length)];
     if (match) {

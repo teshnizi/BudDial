@@ -15,7 +15,11 @@ int main(void) { @autoreleasepool {
     expect(@"Spotlight Codex.", APCommandSpotlight, @"Codex");
     expect(@" spotlight, Claude Code!", APCommandSpotlight, @"Claude Code");
     expect(@"Spot light: calendar", APCommandSpotlight, @"calendar");
-    expect(@"Spotlight.", APCommandSpotlight, @"");
+    expect(@"Smart white cloud coat.", APCommandSpotlight, @"cloud coat");
+    expect(@"Spot white.", APCommandSpotlight, @"");
+    expect(@"Spotlights, Codex", APCommandSpotlight, @"Codex");
+    expect(@"Smart whiteboards are useful.", APCommandNone, nil);
+    expect(@"A smart white shirt.", APCommandNone, nil);
     expect(@"Spotlight node.js docs", APCommandSpotlight, @"node.js docs");
     expect(@"Spotlighting the issue is useful.", APCommandNone, nil);
     expect(@"I opened spotlight and searched.", APCommandNone, nil);

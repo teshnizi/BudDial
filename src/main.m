@@ -23,6 +23,11 @@ static double now(void) { return NSProcessInfo.processInfo.systemUptime; }
 // excluded. 0.08 s: on the 2026-10-15 takes mixed with noise, no silent hold or tap failed in a
 // -43 dBFS room, 7.6% of silent holds (no taps) at -38, and no sentence was missed (tools/eval_speech_detection.c).
 static const double kQuickTouchSeconds = .95, kSpeechSeconds = .08;
+// Up to this much sound, a touch may still be silent (noise or breath gave the user's silent holds
+// 0.00 to 0.30 s): Whisper decides. No words means a tap (short) or a silent hold (long); words paste.
+// The user's shortest real replies ("Send it.", "Yes, go ahead.") measured 0.22 to 0.24 s and are
+// recognized, so they still paste.
+static const double kQuietSpeechSeconds = .3;
 typedef NS_ENUM(NSInteger, APHint) { APHintNone, APHintSend, APHintListen, APHintUndo };
 static void (^eventSink)(NSString *);
 static NSString *support(void) {
@@ -372,7 +377,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 - (void)updateHint {
     if (!gesture.tracking || !self.recorder.taking) return;
     double held = now() - gesture.pressedAt;
-    BOOL quiet = liveSpeech < kSpeechSeconds;
+    BOOL quiet = liveSpeech < kQuietSpeechSeconds;
     APHint next = APHintListen;
     if (self.benchmark.recording) next = APHintListen;
     else if ((held < gesture.holdSeconds || (quiet && held < kQuickTouchSeconds)) && [[self settingValue:@"tapToSend"] boolValue]) next = APHintSend;
@@ -465,8 +470,11 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     NSMutableArray<NSString *> *words = [NSMutableArray array];
     NSString *typed = [[self settingValue:@"vocabulary"] stringByTrimmingCharactersInSet:trim];
     if (typed.length) [words addObject:typed];
-    for (NSString *spelling in APReplacementSpellings([self settingValue:@"replacements"]))
-        if ([typed rangeOfString:spelling options:NSCaseInsensitiveSearch].location == NSNotFound) [words addObject:spelling];
+    NSMutableArray<NSString *> *spellings = [APReplacementSpellings([self settingValue:@"replacements"]) mutableCopy];
+    // Without the hint Whisper writes the command word as "Smart white" or "Spot white".
+    if ([[self settingValue:@"voiceCommands"] boolValue]) [spellings insertObject:@"Spotlight" atIndex:0];
+    for (NSString *spelling in spellings)
+        if ([typed rangeOfString:spelling options:NSCaseInsensitiveSearch].location == NSNotFound && ![words containsObject:spelling]) [words addObject:spelling];
     NSString *vocabulary = [words componentsJoinedByString:@", "];
     if (vocabulary.length) { [parts addObject:[NSString stringWithFormat:@"Words I use: %@.", vocabulary]]; [described addObject:@"vocabulary"]; }
     NSString *source = nil;
@@ -525,11 +533,14 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
         }
         NSData *wave = [take wave];
         NSString *clip = strong.debugClips.remaining ? [strong.debugClips reserveAudio:wave metadata:@{@"microphone":take.microphone ?: @"", @"preRollMs":@(take.preRollMs), @"speechSeconds":@(take.speechSeconds)}] : nil;
-        [strong.transcriber transcribeWave:wave prompt:prompt completion:^(NSString *text, NSString *error, double elapsed) {
+        // On a take this quiet the vocabulary and context prompt only tempt Whisper to invent a
+        // sentence ("I use the same as the other side."), so it gets none.
+        NSString *used = take.speechSeconds < kQuietSpeechSeconds ? nil : prompt;
+        [strong.transcriber transcribeWave:wave prompt:used completion:^(NSString *text, NSString *error, double elapsed) {
             strong->transcriptionMs = elapsed;
             if (!error && take.speechSeconds < .8 && looksLikeSilenceHallucination(text)) error = @"No speech recognized";
             if (!error && [text rangeOfCharacterFromSet:NSCharacterSet.alphanumericCharacterSet].location == NSNotFound) error = @"No speech recognized";
-            if (!error && echoesPrompt(text, prompt)) error = @"No speech recognized";
+            if (!error && echoesPrompt(text, used)) error = @"No speech recognized";
             [strong.debugClips finishDirectory:clip text:text ?: @"" metadata:@{@"transcriptionMs":@(elapsed), @"error":error ?: @""}];
             // A short touch with no words was a tap the level meter mistook for speech (5 of 10 such
             // touches in the log, all ≤ 0.26 s of "speech"): send instead of failing.
@@ -537,6 +548,13 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
                 if (strong->inFlight) strong->inFlight--;
                 record([NSString stringWithFormat:@"No words in a %.0f ms touch: treated as a tap.", heldMs]);
                 [strong tapToSend:heldMs];
+                return;
+            }
+            // Likewise a long, quiet touch with no words was a silent hold: undo.
+            if (error && heldMs >= kQuickTouchSeconds * 1000 && take.speechSeconds < kQuietSpeechSeconds && [error isEqual:@"No speech recognized"]
+                && [[strong settingValue:@"silentHoldDeletes"] boolValue]) {
+                if (strong->inFlight) strong->inFlight--;
+                [strong deleteLastDictation:[NSString stringWithFormat:@"Silent hold (%.0f ms, no words)", heldMs]];
                 return;
             }
             if (error) { [strong takeFailed:error]; return; }
