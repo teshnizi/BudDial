@@ -30,7 +30,7 @@ While both AirPods are in your ears, BudDial leaves them alone. While you hold a
 2. Open it. Builds are not notarized yet, so macOS blocks the first launch: open System Settings → Privacy & Security, scroll down and click **Open Anyway**.
 3. The welcome guide does the rest: microphone and Accessibility permissions, choosing your AirPods, a short practice, and a one-time download of the speech model (about 550 MB).
 
-BudDial lives in the menu bar (the AirPods icon). Settings, Disable and Quit are there.
+BudDial lives in the menu bar: the bud with three dots. Settings, Disable and Quit are there.
 
 **Requirements:** macOS 26 or later on Apple Silicon, and AirPods with automatic ear detection. Tested with AirPods 4.
 

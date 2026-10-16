@@ -3,6 +3,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <IOBluetooth/IOBluetooth.h>
 #import "BenchmarkPanel.h"
+#import "BudMark.h"
 #import "BudSensor.h"
 #import "Commands.h"
 #import "DebugClips.h"
@@ -809,8 +810,10 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     self.toggleItem.title = desiredEnabled ? @"Disable" : @"Enable";
     BOOL attention = !desiredEnabled || ![self microphoneAllowed] || !AXIsProcessTrusted() || ![[self settingValue:@"bluetoothAddress"] length];
     BOOL recording = gesture.tracking && [self enabled];
-    NSString *symbol = recording ? @"mic.fill" : inFlight ? @"waveform" : @"airpods";
-    self.statusItem.button.image = [NSImage imageWithSystemSymbolName:symbol accessibilityDescription:@"BudDial"];
+    // The BudDial mark, red while recording; the waveform while text is being transcribed.
+    static NSImage *mark;
+    if (!mark) mark = APBudMarkMenuBarImage();
+    self.statusItem.button.image = inFlight && !recording ? [NSImage imageWithSystemSymbolName:@"waveform" accessibilityDescription:@"BudDial"] : mark;
     self.statusItem.button.contentTintColor = recording ? NSColor.systemRedColor : nil;
     self.statusItem.button.title = attention ? @" !" : @"";
     self.statusItem.button.toolTip = [@"BudDial — " stringByAppendingString:state];

@@ -405,7 +405,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     self.loginSwitch.state = NSControlStateValueOn;
     CGFloat inner = kContent - 28;
     [self add:[self panel:@[
-        [self item:@"menubar.rectangle" title:@"In your menu bar" text:@"Click the AirPods icon for settings, or to disable or quit BudDial." accessory:nil width:inner],
+        [self item:@"menubar.rectangle" title:@"In your menu bar" text:@"Click the BudDial icon, a bud with three dots, for settings, or to disable or quit BudDial." accessory:nil width:inner],
         [self item:@"power" title:@"Open at login" text:@"Start BudDial when you log in." accessory:self.loginSwitch width:inner]]] to:page];
     return page;
 }

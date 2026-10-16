@@ -170,7 +170,7 @@ clang -isysroot "$sdk_dir" -mmacosx-version-min=26.0 -fobjc-arc -O2 -Wall -Wextr
     -framework IOBluetooth -framework QuartzCore -framework ServiceManagement \
     "$src/main.m" "$src/BudSensor.m" "$src/Recorder.m" "$src/Transcriber.m" "$src/Feedback.m" "$src/Overlay.m" \
     "$src/SettingsWindow.m" "$src/BenchmarkPanel.m" "$src/MonitorPanel.m" "$src/DebugClips.m" "$src/ModelStore.m" "$src/OnboardingWindow.m" "$src/GestureStage.m" \
-    "$src/Commands.m" "$src/ReplacementsSheet.m" \
+    "$src/Commands.m" "$src/ReplacementsSheet.m" "$src/BudMark.m" \
     -o "$stage/Contents/MacOS/BudDial"
 bundle_engine
 
