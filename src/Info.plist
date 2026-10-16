@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Buddial</string>
+	<key>CFBundleExecutable</key>
+	<string>Buddial</string>
+	<key>CFBundleIdentifier</key>
+	<string>dev.buddial</string>
+	<key>CFBundleName</key>
+	<string>Buddial</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.10</string>
+	<key>CFBundleVersion</key>
+	<string>10</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Checks whether your AirPods are connected, so a disconnect stops any recording in progress.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Records speech while you cover an AirPod sensor and transcribes it on this Mac. With Instant start on, a few seconds of audio are kept in memory only, so your first words are not cut off.</string>
+</dict>
+</plist>
