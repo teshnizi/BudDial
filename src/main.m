@@ -21,7 +21,7 @@ static double now(void) { return NSProcessInfo.processInfo.systemUptime; }
 // touch is a tap; up to kQuickTouchSeconds with no speech it is still a tap; longer with no speech
 // it is a silent hold. "No speech" is under kSpeechSeconds above the take's noise floor, start cue
 // excluded. 0.08 s: on the 2026-10-15 takes mixed with noise, no silent hold or tap failed in a
-// -43 dBFS room and 3.8% at -38, while sentences were never missed (tools/eval_speech_detection.c).
+// -43 dBFS room, 7.6% of silent holds (no taps) at -38, and no sentence was missed (tools/eval_speech_detection.c).
 static const double kQuickTouchSeconds = .95, kSpeechSeconds = .08;
 typedef NS_ENUM(NSInteger, APHint) { APHintNone, APHintSend, APHintListen, APHintUndo };
 static void (^eventSink)(NSString *);
