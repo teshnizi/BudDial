@@ -1,4 +1,5 @@
 #import "OnboardingWindow.h"
+#import "GestureStage.h"
 #import <AVFoundation/AVFoundation.h>
 #import <IOBluetooth/IOBluetooth.h>
 #import <ServiceManagement/ServiceManagement.h>
@@ -95,6 +96,8 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
 @property NSArray<NSImageView *> *checks;
 @property BOOL said, sent, undone;
 @property NSSwitch *loginSwitch;
+@property APGestureStage *stage;
+@property NSArray<NSView *> *gestureRows;
 @end
 
 @implementation APOnboardingWindow
@@ -144,12 +147,14 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
 #pragma mark Layout
 
 - (NSStackView *)pageWithSymbol:(NSString *)name tint:(NSColor *)tint title:(NSString *)title subtitle:(NSString *)subtitle {
-    NSImageView *icon = symbol(name, 40, tint);
+    return [self pageWithHero:symbol(name, 40, tint) title:title subtitle:subtitle];
+}
+- (NSStackView *)pageWithHero:(NSView *)hero title:(NSString *)title subtitle:(NSString *)subtitle {
     NSTextField *subtitleField = paragraph(subtitle, 13, NSColor.secondaryLabelColor, kContent);
     subtitleField.alignment = NSTextAlignmentCenter;
-    NSStackView *head = stack(@[icon, label(title, 22, NSFontWeightSemibold, NSColor.labelColor), subtitleField], NSUserInterfaceLayoutOrientationVertical, 6);
+    NSStackView *head = stack(@[hero, label(title, 22, NSFontWeightSemibold, NSColor.labelColor), subtitleField], NSUserInterfaceLayoutOrientationVertical, 6);
     head.alignment = NSLayoutAttributeCenterX;
-    [head setCustomSpacing:14 afterView:icon];
+    [head setCustomSpacing:14 afterView:hero];
     NSStackView *page = stack(@[head], NSUserInterfaceLayoutOrientationVertical, 24);
     page.alignment = NSLayoutAttributeCenterX;
     return page;
@@ -239,14 +244,29 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
 #pragma mark Pages
 
 - (NSView *)welcomePage {
-    NSStackView *page = [self pageWithSymbol:@"airpods" tint:NSColor.controlAccentColor title:@"Welcome to Buddial"
-                                    subtitle:@"Type with your voice by holding an AirPod. Works in any app."];
-    NSStackView *gestures = stack(@[
+    // The stage plays each gesture in turn; the row it is showing stays bright.
+    self.stage = [APGestureStage new];
+    NSStackView *page = [self pageWithHero:self.stage title:@"Welcome to Buddial"
+                                  subtitle:@"Type with your voice by holding an AirPod. Works in any app."];
+    self.gestureRows = @[
         [self item:@"mic.fill" title:@"Hold and talk" text:@"Cover a bud's sensor with your finger and speak. Let go, and the words appear at your cursor." accessory:nil width:kContent],
         [self item:@"return" title:@"Tap to send" text:@"A quick tap presses Return." accessory:nil width:kContent],
-        [self item:@"delete.backward" title:@"Hold silently to undo" text:@"Cover it for a second without talking to remove what you just said." accessory:nil width:kContent]],
-        NSUserInterfaceLayoutOrientationVertical, 18);
-    for (NSView *row in gestures.arrangedSubviews) [row.widthAnchor constraintEqualToConstant:kContent].active = YES;
+        [self item:@"delete.backward" title:@"Hold silently to undo" text:@"Cover it for a second without talking to remove what you just said." accessory:nil width:kContent]];
+    NSStackView *gestures = stack(self.gestureRows, NSUserInterfaceLayoutOrientationVertical, 18);
+    for (NSView *row in self.gestureRows) {
+        [row.widthAnchor constraintEqualToConstant:kContent].active = YES;
+        [row addGestureRecognizer:[[NSClickGestureRecognizer alloc] initWithTarget:self action:@selector(gestureRowClicked:)]];
+    }
+    __weak APOnboardingWindow *weakSelf = self;
+    self.stage.onPhase = ^(APStagePhase phase) {
+        [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
+            context.duration = .25;
+            [weakSelf.gestureRows enumerateObjectsUsingBlock:^(NSView *row, NSUInteger index, BOOL *stop) {
+                (void)stop;
+                row.animator.alphaValue = (APStagePhase)index == phase ? 1 : .4;
+            }];
+        }];
+    };
     [self add:gestures to:page];
     NSStackView *privacy = stack(@[symbol(@"lock.fill", 10, NSColor.tertiaryLabelColor),
                                    label(@"Speech becomes text on this Mac. Nothing is uploaded.", 11, NSFontWeightRegular, NSColor.tertiaryLabelColor)],
@@ -403,6 +423,8 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     self.nextButton.title = step == kWelcome ? @"Get Started" : step == kDone ? @"Done" : @"Continue";
     // On the practice step Return belongs to the text box: Buddial's tap presses it there.
     self.nextButton.keyEquivalent = step == kPractice ? @"" : @"\r";
+    if (step == kWelcome) [self.stage start];
+    else [self.stage stop];
     if (step == kAirPods) [self reloadDevices];
     if (step == kPractice) [self makeFirstResponder:self.practice];
     [self refresh];
@@ -431,6 +453,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
 - (void)windowWillClose:(NSNotification *)notification {
     (void)notification;
     [self.timer invalidate];
+    [self.stage stop];
     self.timer = nil;
 }
 - (void)finish {
@@ -543,6 +566,10 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     [self refresh];
 }
 - (void)retryDownload:(id)sender { (void)sender; [self.host retryModelDownload]; }
+- (void)gestureRowClicked:(NSClickGestureRecognizer *)click {
+    NSUInteger index = [self.gestureRows indexOfObject:click.view];
+    if (index != NSNotFound) [self.stage showPhase:(APStagePhase)index];
+}
 - (void)reloadDevices {
     NSString *current = [self.host settingValue:@"bluetoothAddress"] ?: @"";
     NSArray<IOBluetoothDevice *> *buds = APPairedBuds();
