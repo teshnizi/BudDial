@@ -1,4 +1,5 @@
 #import "SettingsWindow.h"
+#import "ReplacementsSheet.h"
 #import "Transcriber.h"
 #import <AVFoundation/AVFoundation.h>
 #import <IOBluetooth/IOBluetooth.h>
@@ -63,7 +64,9 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
 @property NSSwitch *enabledSwitch, *sendSwitch, *deleteSwitch, *instantSwitch, *loginSwitch;
 @property NSSlider *holdSlider;
 @property NSTextField *vocabularyField;
-@property NSSwitch *contextSwitch;
+@property NSSwitch *contextSwitch, *commandsSwitch;
+@property NSButton *replacementsButton;
+@property APReplacementsSheet *replacementsSheet;
 @property NSPopUpButton *devicePopup, *microphonePopup, *modelPopup, *languagePopup, *soundPopup;
 @end
 
@@ -106,6 +109,8 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
         [self row:@"Model" caption:@"Runs on this Mac." control:self.modelPopup],
         [self row:@"Language" caption:nil control:self.languagePopup],
         [self row:@"Vocabulary" caption:@"Names and terms you say, comma-separated." control:self.vocabularyField],
+        [self row:@"Replacements" caption:@"Fix words it keeps getting wrong, like “clawed code” to “Claude Code”." control:self.replacementsButton],
+        [self row:@"Voice commands" caption:@"Start with “Spotlight” to search. Say “scratch that” to undo, “new line” for a line break." control:self.commandsSwitch],
         [self row:@"Use text before the cursor" caption:@"Helps spelling and style. Read on this Mac, never sent anywhere." control:self.contextSwitch]]]];
     NSButton *test = [NSButton buttonWithTitle:@"Test" target:self action:@selector(testSound:)];
     test.controlSize = NSControlSizeSmall;
@@ -291,6 +296,8 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
     }
     self.loginSwitch = [self toggle:@selector(loginChanged:)];
     self.contextSwitch = [self toggle:@selector(contextChanged:)];
+    self.commandsSwitch = [self toggle:@selector(commandsChanged:)];
+    self.replacementsButton = [NSButton buttonWithTitle:@"Edit…" target:self action:@selector(editReplacements:)];
     self.vocabularyField = [NSTextField textFieldWithString:@""];
     self.vocabularyField.placeholderString = @"Buddial, Homebrew, Claude…";
     self.vocabularyField.target = self;
@@ -395,6 +402,9 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
     self.deleteSwitch.state = [[self.host settingValue:@"silentHoldDeletes"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
     self.instantSwitch.state = [[self.host settingValue:@"instantStart"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
     self.contextSwitch.state = [[self.host settingValue:@"useContext"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
+    self.commandsSwitch.state = [[self.host settingValue:@"voiceCommands"] boolValue] ? NSControlStateValueOn : NSControlStateValueOff;
+    NSUInteger replacements = [[self.host settingValue:@"replacements"] count];
+    self.replacementsButton.title = replacements ? [NSString stringWithFormat:@"%lu %@…", (unsigned long)replacements, replacements == 1 ? @"word" : @"words"] : @"Edit…";
     self.vocabularyField.stringValue = [self.host settingValue:@"vocabulary"] ?: @"";
     self.loginSwitch.state = SMAppService.mainAppService.status == SMAppServiceStatusEnabled ? NSControlStateValueOn : NSControlStateValueOff;
 }
@@ -481,6 +491,16 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
 - (void)languageChanged:(NSPopUpButton *)sender { [self.host setSettingValue:sender.selectedItem.representedObject forKey:@"language"]; }
 - (void)soundChanged:(NSPopUpButton *)sender { [self.host setSettingValue:sender.selectedItem.representedObject forKey:@"cueOutput"]; }
 - (void)contextChanged:(NSSwitch *)sender { [self.host setSettingValue:@(sender.state == NSControlStateValueOn) forKey:@"useContext"]; }
+- (void)commandsChanged:(NSSwitch *)sender { [self.host setSettingValue:@(sender.state == NSControlStateValueOn) forKey:@"voiceCommands"]; }
+- (void)editReplacements:(id)sender {
+    (void)sender;
+    __weak APSettingsWindow *weakSelf = self;
+    self.replacementsSheet = [[APReplacementsSheet alloc] initWithPairs:[self.host settingValue:@"replacements"] completion:^(NSArray<NSDictionary *> *pairs) {
+        [weakSelf.host setSettingValue:pairs forKey:@"replacements"];
+        [weakSelf reloadChoices];
+    }];
+    [self beginSheet:self.replacementsSheet completionHandler:^(NSModalResponse response) { (void)response; weakSelf.replacementsSheet = nil; }];
+}
 - (void)vocabularyChanged:(NSTextField *)sender { [self.host setSettingValue:sender.stringValue forKey:@"vocabulary"]; }
 - (void)testSound:(id)sender { [self.host testSound:sender]; }
 - (void)diagnostics:(id)sender { [self.host showMonitor:sender]; }

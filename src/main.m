@@ -4,6 +4,7 @@
 #import <IOBluetooth/IOBluetooth.h>
 #import "BenchmarkPanel.h"
 #import "BudSensor.h"
+#import "Commands.h"
 #import "DebugClips.h"
 #import "Feedback.h"
 #import "Gesture.h"
@@ -225,7 +226,8 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
              @"preRollSeconds":@.6, @"microphone":@"builtin", @"instantStart":@YES, @"model":[APTranscriber defaultModelFile],
              @"language":@"en", @"cueOutput":@"speakers", @"showMonitorOnLaunch":@NO,
              // Speech detection cut quiet speech in noise: +11 to +25 points WER on the 2026-10-15 benchmark.
-             @"vocabulary":@"", @"useContext":@YES, @"vad":@NO, @"beamSize":@5};
+             @"vocabulary":@"", @"useContext":@YES, @"vad":@NO, @"beamSize":@5,
+             @"voiceCommands":@YES, @"replacements":@[]};
 }
 - (id)settingValue:(NSString *)key { return self.config[key] ?: BuddialApp.defaults[key]; }
 - (double)number:(NSString *)key { return [[self settingValue:key] doubleValue]; }
@@ -454,7 +456,13 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 - (NSString *)promptForTake:(NSString **)summary {
     NSMutableArray<NSString *> *parts = [NSMutableArray array], *described = [NSMutableArray array];
     NSCharacterSet *trim = [NSCharacterSet characterSetWithCharactersInString:@" ,.;\n\t"];
-    NSString *vocabulary = [[self settingValue:@"vocabulary"] stringByTrimmingCharactersInSet:trim];
+    // The user's words plus every spelling from the replacements list, so one list covers both.
+    NSMutableArray<NSString *> *words = [NSMutableArray array];
+    NSString *typed = [[self settingValue:@"vocabulary"] stringByTrimmingCharactersInSet:trim];
+    if (typed.length) [words addObject:typed];
+    for (NSString *spelling in APReplacementSpellings([self settingValue:@"replacements"]))
+        if ([typed rangeOfString:spelling options:NSCaseInsensitiveSearch].location == NSNotFound) [words addObject:spelling];
+    NSString *vocabulary = [words componentsJoinedByString:@", "];
     if (vocabulary.length) { [parts addObject:[NSString stringWithFormat:@"Words I use: %@.", vocabulary]]; [described addObject:@"vocabulary"]; }
     NSString *source = nil;
     NSString *context = [[self settingValue:@"useContext"] boolValue] ? [self contextBeforeCursor:&source] : nil;
@@ -527,6 +535,8 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
                 return;
             }
             if (error) { [strong takeFailed:error]; return; }
+            text = APApplyReplacements(text, [strong settingValue:@"replacements"]);
+            if ([[strong settingValue:@"voiceCommands"] boolValue] && [strong runCommand:text released:released]) return;
             [strong insert:text released:released];
         }];
     }];
@@ -577,6 +587,58 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
         if (CGEventSourceSecondsSinceLastEventType(kCGEventSourceStateHIDSystemState, types[i]) < since - .05) return YES;
     return NO;
 }
+// Puts text on the clipboard, presses ⌘V, and puts the previous clipboard back half a second later
+// (unless something else changed it meanwhile).
+- (void)paste:(NSString *)text {
+    NSPasteboard *board = NSPasteboard.generalPasteboard;
+    NSMutableArray<NSPasteboardItem *> *saved = [NSMutableArray array];
+    for (NSPasteboardItem *item in board.pasteboardItems) {
+        NSPasteboardItem *copy = [NSPasteboardItem new];
+        for (NSPasteboardType type in item.types) { NSData *data = [item dataForType:type]; if (data) [copy setData:data forType:type]; }
+        [saved addObject:copy];
+    }
+    [board clearContents];
+    [board setString:text forType:NSPasteboardTypeString];
+    NSInteger ours = board.changeCount;
+    [self postKey:9 flags:kCGEventFlagMaskCommand];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC / 2), dispatch_get_main_queue(), ^{
+        if (board.changeCount == ours) { [board clearContents]; if (saved.count) [board writeObjects:saved]; }
+    });
+}
+// A transcript that starts with a command word does that instead of being typed. Returns NO for
+// ordinary dictation. Commands never join the undo list: their text is not in the document.
+- (BOOL)runCommand:(NSString *)text released:(double)released {
+    APCommand *command = [APCommand parse:text];
+    if (command.kind == APCommandNone) return NO;
+    if (inFlight) inFlight--;
+    releaseToTextMs = (now() - released) * 1000;
+    BOOL allowed = AXIsProcessTrusted();
+    if (!allowed && command.kind != APCommandScratch) {
+        [self.overlay flash:@"Allow Accessibility for voice commands" tone:APOverlayToneError];
+        record(@"Voice command skipped: Accessibility is off.");
+    } else if (command.kind == APCommandScratch) {
+        [self deleteLastDictation:@"Voice command (scratch that)"];
+    } else if (command.kind == APCommandNewLine) {
+        [self postKey:36 flags:kCGEventFlagMaskShift];
+        [self.overlay flash:@"New line" tone:APOverlayToneInfo];
+        record(@"Voice command: new line (Shift+Return).");
+    } else if (command.kind == APCommandSpotlight) {
+        // ⌘Space opens Spotlight (or whichever launcher the user gave that shortcut). Its search
+        // field needs a moment to appear before the query is pasted into it.
+        [self postKey:49 flags:kCGEventFlagMaskCommand];
+        [self.overlay flash:command.text.length ? [@"Spotlight: " stringByAppendingString:command.text] : @"Spotlight" tone:APOverlayToneInfo];
+        record([NSString stringWithFormat:@"Voice command: Spotlight with a %lu-character query (release → command %.0f ms).", (unsigned long)command.text.length, releaseToTextMs]);
+        if (command.text.length) dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ [self paste:command.text]; });
+    }
+    // A tap made while this was transcribing still sends: after the query lands, Return opens the result.
+    if (!inFlight && pendingEnter && allowed && command.kind != APCommandScratch) {
+        pendingEnter = NO;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(.7 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ [self pressEnter]; });
+    }
+    if (!inFlight) pendingDelete = NO;
+    [self updateStatus];
+    return YES;
+}
 - (void)insert:(NSString *)text released:(double)released {
     if (inFlight) inFlight--;
     self.lastTranscript = text;
@@ -603,16 +665,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     NSString *insert = sameStream && now() - lastInsertAt < 120 ? [@" " stringByAppendingString:text] : text;
     // Earlier dictations stay deletable only while they sit directly before this one.
     if (!sameStream || [self userInputSinceLastKey]) [self.deletable removeAllObjects];
-    NSMutableArray<NSPasteboardItem *> *saved = [NSMutableArray array];
-    for (NSPasteboardItem *item in board.pasteboardItems) {
-        NSPasteboardItem *copy = [NSPasteboardItem new];
-        for (NSPasteboardType type in item.types) { NSData *data = [item dataForType:type]; if (data) [copy setData:data forType:type]; }
-        [saved addObject:copy];
-    }
-    [board clearContents];
-    [board setString:insert forType:NSPasteboardTypeString];
-    NSInteger ours = board.changeCount;
-    [self postKey:9 flags:kCGEventFlagMaskCommand];
+    [self paste:insert];
     lastInsertPID = app.processIdentifier; lastInsertAt = now(); enterSinceInsert = NO;
     if (app.processIdentifier == getpid()) [self.onboarding noteInserted];
     [self.deletable addObject:insert];
@@ -621,9 +674,6 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     [self.overlay flash:@"Inserted" tone:APOverlayToneSuccess];
     self.actionText = @"Inserted — tap to send";
     record([NSString stringWithFormat:@"Pasted %lu characters into %@ (release → paste %.0f ms; engine %.0f ms).", (unsigned long)insert.length, app.localizedName ?: @"the front app", releaseToTextMs, transcriptionMs]);
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC / 2), dispatch_get_main_queue(), ^{
-        if (board.changeCount == ours) { [board clearContents]; if (saved.count) [board writeObjects:saved]; }
-    });
     if (!inFlight && (pendingDelete || pendingEnter)) {
         BOOL delete = pendingDelete, enter = pendingEnter;
         pendingDelete = pendingEnter = NO;
