@@ -28,7 +28,7 @@ static const double kQuickTouchSeconds = .95, kSpeechSeconds = .08;
 // The user's shortest real replies ("Send it.", "Yes, go ahead.") measured 0.22 to 0.24 s and are
 // recognized, so they still paste.
 static const double kQuietSpeechSeconds = .3;
-typedef NS_ENUM(NSInteger, APHint) { APHintNone, APHintSend, APHintListen, APHintUndo };
+typedef NS_ENUM(NSInteger, APHint) { APHintNone, APHintSend, APHintListen, APHintUndo, APHintNothingToUndo };
 static void (^eventSink)(NSString *);
 static NSString *support(void) {
     static NSString *path;
@@ -381,13 +381,16 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     APHint next = APHintListen;
     if (self.benchmark.recording) next = APHintListen;
     else if ((held < gesture.holdSeconds || (quiet && held < kQuickTouchSeconds)) && [[self settingValue:@"tapToSend"] boolValue]) next = APHintSend;
-    else if (quiet && held >= kQuickTouchSeconds && [[self settingValue:@"silentHoldDeletes"] boolValue] && ![self whyNothingToDelete]) next = APHintUndo;
+    // A silent hold with nothing to remove says so, rather than looking like it is listening.
+    else if (quiet && held >= kQuickTouchSeconds && [[self settingValue:@"silentHoldDeletes"] boolValue]) next = [self whyNothingToDelete] ? APHintNothingToUndo : APHintUndo;
     if (next == hint) return;
     hint = next;
     if (next == APHintSend) [self.overlay showHint:@"Release to send ↵" color:NSColor.systemBlueColor];
     else if (next == APHintUndo) [self.overlay showHint:@"Release to undo" color:NSColor.systemOrangeColor];
+    else if (next == APHintNothingToUndo) [self.overlay showHint:@"Nothing to undo" color:NSColor.systemGrayColor];
     else [self.overlay showListening];
-    self.actionText = next == APHintSend ? @"Release to send" : next == APHintUndo ? @"Release to undo" : @"Listening — release to insert";
+    self.actionText = next == APHintSend ? @"Release to send" : next == APHintUndo ? @"Release to undo"
+                    : next == APHintNothingToUndo ? @"Nothing to undo" : @"Listening — release to insert";
     record([NSString stringWithFormat:@"Hint at %.0f ms (speech %.2f s): %@.", held * 1000, liveSpeech, self.actionText]);
 }
 - (void)slowTick:(NSTimer *)timer {
