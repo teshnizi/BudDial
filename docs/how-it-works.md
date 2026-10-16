@@ -42,6 +42,7 @@ Stem presses reach the Mac only from a bud that is in an ear (as AVRCP play and 
 - The Mac's built-in microphone is used, not the AirPod's: a bud out of the ear has no audio route, and opening its mic needs a Bluetooth profile switch of about 1.5 s.
 - Instant start keeps the microphone open into a 3 s in-memory ring. A take starts 0.6 s before the touch event, so words spoken at the moment of the touch are kept. Pre-roll audio is kept only for speech that runs across the touch: the last pause of 200 ms or more before the touch cuts everything earlier. Nothing outside a committed take leaves memory. macOS shows the orange microphone dot while the mic is open; with Instant start off, the mic opens per touch and words before it opens are lost.
 - Covering a bud makes macOS treat it as "in ear" and route system audio to it (A2DP start took 1.6 s in testing). Cues are therefore pinned to the Mac's built-in output, preloaded, and played off the main thread.
+- Apple's voice processing (the path that enables Voice Isolation) was tested on 2026-10-16 and is not used. With the built-in mic pinned it works, and it lowered a -40 dBFS room's noise floor by 18 dB. But while it is active macOS processes playback as well: music in the AirPods sounded like a phone call, with less bass, at the same volume (the AirPods stayed at 48 kHz), and it stayed that way after the audio engine stopped, until the process released it. BudDial keeps the mic open all the time, so this would change everything the user hears. Turning it on only during a hold is untested.
 
 ## Speech
 
