@@ -161,8 +161,9 @@ clang -isysroot "$sdk_dir" -fobjc-arc -Wall -Wextra -Werror -framework Foundatio
 "$work/commands-test"
 
 stage="$work/BudDial.app"
-mkdir -p "$stage/Contents/MacOS"
+mkdir -p "$stage/Contents/MacOS" "$stage/Contents/Resources"
 cp "$src/Info.plist" "$stage/Contents/Info.plist"
+cp "$src/AppIcon.icns" "$stage/Contents/Resources/AppIcon.icns"   # regenerate with tools/make_icon.sh
 # macOS 26 is the floor: Homebrew's whisper.cpp, bundled below, is built for it.
 clang -isysroot "$sdk_dir" -mmacosx-version-min=26.0 -fobjc-arc -O2 -Wall -Wextra -Werror -Wno-unused-parameter \
     -framework AppKit -framework ApplicationServices -framework AVFoundation -framework CoreAudio -framework CoreMedia \

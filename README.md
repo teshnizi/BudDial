@@ -1,8 +1,12 @@
+<p align="center"><img src="docs/icon.png" width="128" alt="BudDial icon"></p>
+
 # BudDial
 
 Type with your voice by holding an AirPod.
 
 Take an AirPod out, cover its sensor with a fingertip and talk. Let go, and your words appear at the cursor, in any app. Speech becomes text on your Mac; nothing is uploaded.
+
+<p align="center"><img src="docs/demo.gif" width="560" alt="A finger holds a bud while the words are spoken, a tap sends them, and a silent hold removes the next dictation"></p>
 
 | Gesture | What it does |
 |---|---|
@@ -65,3 +69,7 @@ App data lives in `~/Library/Application Support/BudDial`.
 ## Uninstall
 
 Quit BudDial, delete the app and `~/Library/Application Support/BudDial`, and remove BudDial from System Settings → Privacy & Security → Microphone and Accessibility.
+
+## Artwork
+
+`tools/make_icon.sh` draws the app icon (`src/AppIcon.icns`, `docs/icon.png`). `tools/make_demo_gif.sh` renders the welcome animation to `docs/demo.gif` (needs `ffmpeg`).

@@ -6,6 +6,8 @@
 	<string>BudDial</string>
 	<key>CFBundleExecutable</key>
 	<string>BudDial</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>dev.buddial</string>
 	<key>CFBundleName</key>
