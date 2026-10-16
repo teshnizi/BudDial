@@ -19,22 +19,27 @@
 static double now(void) { return NSProcessInfo.processInfo.systemUptime; }
 // Touch rules, shared by the live hint and the decision on release. Shorter than the hold time a
 // touch is a tap; up to kQuickTouchSeconds with no speech it is still a tap; longer with no speech
-// it is a silent hold. "No speech" is under kSpeechSeconds above the take's noise floor.
-static const double kQuickTouchSeconds = .95, kSpeechSeconds = .12;
+// it is a silent hold. "No speech" is under kSpeechSeconds above the take's noise floor, start cue
+// excluded. 0.08 s: on the 2026-10-15 takes mixed with noise, no silent hold or tap failed in a
+// -43 dBFS room and 3.8% at -38, while sentences were never missed (tools/eval_speech_detection.c).
+static const double kQuickTouchSeconds = .95, kSpeechSeconds = .08;
 typedef NS_ENUM(NSInteger, APHint) { APHintNone, APHintSend, APHintListen, APHintUndo };
 static void (^eventSink)(NSString *);
 static NSString *support(void) {
     static NSString *path;
     if (!path) path = [[NSFileManager.defaultManager URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask].firstObject.path
-                       stringByAppendingPathComponent:@"Buddial"];
+                       stringByAppendingPathComponent:@"BudDial"];
     return path;
 }
-// Builds up to 0.9 kept their data in ~/.local/share/buddial, next to the source. Moved once.
+// Builds up to 0.9 kept their data in ~/.local/share/buddial, next to the source; 0.10 builds used
+// "Buddial" (the same folder on case-insensitive volumes). Moved once.
 static void migrateSupportDirectory(void) {
     NSFileManager *files = NSFileManager.defaultManager;
-    NSString *old = [NSHomeDirectory() stringByAppendingPathComponent:@".local/share/buddial"];
     [files createDirectoryAtPath:support() withIntermediateDirectories:YES attributes:nil error:nil];
     if ([files fileExistsAtPath:[support() stringByAppendingPathComponent:@"config.json"]]) return;
+    NSString *old = [NSHomeDirectory() stringByAppendingPathComponent:@".local/share/buddial"];
+    NSString *oldCase = [[support() stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"Buddial"];
+    if ([files fileExistsAtPath:[oldCase stringByAppendingPathComponent:@"config.json"]]) old = oldCase;
     for (NSString *item in @[@"config.json", @"models", @"bench", @"debug-clips", @"events.log", @"whisper-server.pid"]) {
         NSString *from = [old stringByAppendingPathComponent:item];
         if ([files fileExistsAtPath:from]) [files moveItemAtPath:from toPath:[support() stringByAppendingPathComponent:item] error:nil];
@@ -74,7 +79,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     return [heard componentsSeparatedByString:@" "].count >= 3 && [plain(prompt) containsString:heard];
 }
 
-@interface BuddialApp : NSObject <NSApplicationDelegate, APOnboardingHost> {
+@interface BudDialApp : NSObject <NSApplicationDelegate, APOnboardingHost> {
     APGesture gesture;
     BOOL desiredEnabled, committed, pendingEnter, pendingDelete, bluetoothConnected, checkingConnection, sensorCovered;
     NSUInteger sensorChanges, inFlight;
@@ -108,7 +113,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 @property NSMutableArray<NSString *> *deletable;   // pasted strings since the last Return, newest last
 @end
 
-@implementation BuddialApp
+@implementation BudDialApp
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     (void)notification;
     if ([NSRunningApplication runningApplicationsWithBundleIdentifier:NSBundle.mainBundle.bundleIdentifier].count > 1) { [NSApp terminate:nil]; return; }
@@ -125,7 +130,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     levelDb = -80;
     self.actionText = @"Ready";
     self.sourceText = @"None";
-    __weak BuddialApp *weakSelf = self;
+    __weak BudDialApp *weakSelf = self;
 
     [self buildMenu];
     self.monitor = [[MonitorPanel alloc] initWithController:self];
@@ -140,13 +145,13 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     self.recorder.microphonePreference = [self settingValue:@"microphone"];
     self.recorder.onEvent = ^(NSString *line) { record(line); };
     self.recorder.onLevel = ^(double db) {
-        BuddialApp *strong = weakSelf;
+        BudDialApp *strong = weakSelf;
         if (!strong) return;
         strong->levelDb = db;
         [strong.overlay setLevel:db];
     };
     self.recorder.onSpeech = ^(double seconds) {
-        BuddialApp *strong = weakSelf;
+        BudDialApp *strong = weakSelf;
         if (!strong || !strong->gesture.tracking) return;
         strong->liveSpeech = seconds;
         [strong updateHint];
@@ -229,7 +234,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
              @"vocabulary":@"", @"useContext":@YES, @"vad":@NO, @"beamSize":@5,
              @"voiceCommands":@YES, @"replacements":@[]};
 }
-- (id)settingValue:(NSString *)key { return self.config[key] ?: BuddialApp.defaults[key]; }
+- (id)settingValue:(NSString *)key { return self.config[key] ?: BudDialApp.defaults[key]; }
 - (double)number:(NSString *)key { return [[self settingValue:key] doubleValue]; }
 - (void)saveConfig {
     NSData *data = [NSJSONSerialization dataWithJSONObject:self.config options:NSJSONWritingPrettyPrinted | NSJSONWritingSortedKeys error:nil];
@@ -239,16 +244,16 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     self.statusItem = [NSStatusBar.systemStatusBar statusItemWithLength:NSVariableStatusItemLength];
     self.statusItem.button.imagePosition = NSImageLeft;
     NSMenu *menu = [NSMenu new];
-    self.statusLine = [menu addItemWithTitle:@"Buddial" action:nil keyEquivalent:@""];
+    self.statusLine = [menu addItemWithTitle:@"BudDial" action:nil keyEquivalent:@""];
     [menu addItem:NSMenuItem.separatorItem];
-    self.toggleItem = [menu addItemWithTitle:@"Pause Dictation" action:@selector(toggle:) keyEquivalent:@""];
+    self.toggleItem = [menu addItemWithTitle:@"Disable" action:@selector(toggle:) keyEquivalent:@""];
     NSMenuItem *settings = [menu addItemWithTitle:@"Settings…" action:@selector(showSettings:) keyEquivalent:@","];
     [menu addItem:NSMenuItem.separatorItem];
-    NSMenuItem *quit = [menu addItemWithTitle:@"Quit Buddial" action:@selector(quit:) keyEquivalent:@"q"];
+    NSMenuItem *quit = [menu addItemWithTitle:@"Quit BudDial" action:@selector(quit:) keyEquivalent:@"q"];
     for (NSMenuItem *item in @[self.toggleItem, settings, quit]) item.target = self;
     self.statusItem.menu = menu;
     // A menu-bar app shows no menu bar, but its text fields still need the Edit key equivalents:
-    // ⌘V is how Buddial pastes, including into its own windows.
+    // ⌘V is how BudDial pastes, including into its own windows.
     NSMenu *edit = [[NSMenu alloc] initWithTitle:@"Edit"];
     [edit addItemWithTitle:@"Undo" action:@selector(undo:) keyEquivalent:@"z"];
     [edit addItemWithTitle:@"Redo" action:@selector(redo:) keyEquivalent:@"Z"];
@@ -267,7 +272,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     self.sensor = nil;
     NSString *address = [self settingValue:@"bluetoothAddress"];
     if (!address.length) return;
-    __weak BuddialApp *weakSelf = self;
+    __weak BudDialApp *weakSelf = self;
     self.sensor = [[APBudSensor alloc] initWithAddress:address];
     self.sensor.onEvent = ^(NSString *line) { record(line); };
     self.sensor.onChange = ^(BOOL covered, NSString *source) { [weakSelf sensorChanged:covered source:source]; };
@@ -414,7 +419,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     AXUIElementRef system = AXUIElementCreateSystemWide();
     AXUIElementSetMessagingTimeout(system, .15);   // a busy app must never stall the main thread
     if (NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier == getpid()) {
-        // Buddial's own window (the practice box): read it directly; AX calls into this process
+        // BudDial's own window (the practice box): read it directly; AX calls into this process
         // from its own main thread would only time out.
         NSTextView *view = (NSTextView *)NSApp.keyWindow.firstResponder;
         if ([view isKindOfClass:NSTextView.class]) context = [view.string substringToIndex:MIN(view.selectedRange.location, view.string.length)];
@@ -475,7 +480,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
         // Benchmark takes are saved with their reference sentence; never transcribed or pasted.
         committed = NO;
         [self.feedback play:APCueStop];
-        __weak BuddialApp *weakSelf = self;
+        __weak BudDialApp *weakSelf = self;
         [self.recorder finishWithTail:.15 completion:^(APRecording *take) {
             NSString *saved = [weakSelf.benchmark saveTake:[take wave]];
             record([NSString stringWithFormat:@"Benchmark take %.2f s (speech %.2f s): %@.", take.seconds, take.speechSeconds, saved ?: @"benchmark closed, not saved"]);
@@ -495,9 +500,9 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     self.actionText = listening ? @"Transcribing…" : self.actionText;
     NSString *contextSummary = nil;
     NSString *prompt = [self promptForTake:&contextSummary];
-    __weak BuddialApp *weakSelf = self;
+    __weak BudDialApp *weakSelf = self;
     [self.recorder finishWithTail:.15 completion:^(APRecording *take) {
-        BuddialApp *strong = weakSelf;
+        BudDialApp *strong = weakSelf;
         if (!strong) return;
         strong->recordedSeconds = take.seconds;
         strong->speechSeconds = take.speechSeconds;
@@ -510,7 +515,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
                 take.preRollMs, take.firstAudioMs >= 0 && take.preRollMs == 0 ? [NSString stringWithFormat:@", mic start %.0f ms", take.firstAudioMs] : @"", take.speechSeconds, lead, contextSummary]);
         // No speech: a short touch is a tap (two quick taps also arrive as one such touch: the bud
         // never reports the gap between them); a longer one is a silent hold. Silent holds measured
-        // ≤ 0.10 s of speech; the quietest real dictation 0.14 s.
+        // under 0.08 s of speech once the start cue is excluded.
         if (take.speechSeconds < kSpeechSeconds) {
             if (heldMs >= kQuickTouchSeconds * 1000 && ![[strong settingValue:@"silentHoldDeletes"] boolValue]) { [strong takeFailed:@"No speech heard"]; return; }
             if (strong->inFlight) strong->inFlight--;
@@ -552,7 +557,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     [self updateStatus];
 }
 - (BOOL)focusedFieldIsSecure {
-    if (NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier == getpid()) return NO;   // Buddial has no password fields
+    if (NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier == getpid()) return NO;   // BudDial has no password fields
     AXUIElementRef system = AXUIElementCreateSystemWide();
     CFTypeRef focused = NULL;
     BOOL secure = NO;
@@ -578,8 +583,8 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     if (source) CFRelease(source);
     lastSyntheticKeyAt = now();
 }
-// Whether the user typed or clicked since Buddial's last keystroke: the cursor may have moved, so
-// backspacing would no longer remove what Buddial pasted. Counts physical input only.
+// Whether the user typed or clicked since BudDial's last keystroke: the cursor may have moved, so
+// backspacing would no longer remove what BudDial pasted. Counts physical input only.
 - (BOOL)userInputSinceLastKey {
     double since = now() - lastSyntheticKeyAt;
     const CGEventType types[] = {kCGEventKeyDown, kCGEventLeftMouseDown, kCGEventRightMouseDown};
@@ -763,7 +768,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 #pragma mark Status
 
 - (NSString *)controlState {
-    if (!desiredEnabled) return @"Paused";
+    if (!desiredEnabled) return @"Disabled";
     if (![[self settingValue:@"bluetoothAddress"] length]) return @"Choose your AirPods in Settings";
     if (![self microphoneAllowed]) return @"Allow microphone access";
     if (!bluetoothConnected) return @"AirPods not connected";
@@ -780,14 +785,14 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 - (void)updateStatus {
     NSString *state = [self controlState];
     self.statusLine.title = state;
-    self.toggleItem.title = desiredEnabled ? @"Pause Dictation" : @"Resume Dictation";
+    self.toggleItem.title = desiredEnabled ? @"Disable" : @"Enable";
     BOOL attention = !desiredEnabled || ![self microphoneAllowed] || !AXIsProcessTrusted() || ![[self settingValue:@"bluetoothAddress"] length];
     BOOL recording = gesture.tracking && [self enabled];
     NSString *symbol = recording ? @"mic.fill" : inFlight ? @"waveform" : @"airpods";
-    self.statusItem.button.image = [NSImage imageWithSystemSymbolName:symbol accessibilityDescription:@"Buddial"];
+    self.statusItem.button.image = [NSImage imageWithSystemSymbolName:symbol accessibilityDescription:@"BudDial"];
     self.statusItem.button.contentTintColor = recording ? NSColor.systemRedColor : nil;
     self.statusItem.button.title = attention ? @" !" : @"";
-    self.statusItem.button.toolTip = [@"Buddial — " stringByAppendingString:state];
+    self.statusItem.button.toolTip = [@"BudDial — " stringByAppendingString:state];
     double t = now();
     if (!self.monitor.visible && t - lastSnapshot < .25) return;
     double age = self.sensor.lastEventUptime ? (t - self.sensor.lastEventUptime) * 1000 : -1;
@@ -855,8 +860,8 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     if ([key isEqual:@"controlsEnabled"]) {
         desiredEnabled = [value boolValue];
         [self resetGesture];
-        self.actionText = desiredEnabled ? @"Ready" : @"Paused";
-        [self.overlay flash:desiredEnabled ? @"Dictation on" : @"Dictation paused" tone:APOverlayToneInfo];
+        self.actionText = desiredEnabled ? @"Ready" : @"Disabled";
+        [self.overlay flash:desiredEnabled ? @"BudDial enabled" : @"BudDial disabled" tone:APOverlayToneInfo];
     } else if ([key isEqual:@"bluetoothAddress"]) {
         [self resetGesture];
         self.bluetoothDevice = nil;
@@ -925,7 +930,7 @@ int main(int argc, const char *argv[]) {
     @autoreleasepool {
         NSApplication *app = NSApplication.sharedApplication;
         [app setActivationPolicy:NSApplicationActivationPolicyAccessory];
-        BuddialApp *delegate = [BuddialApp new];
+        BudDialApp *delegate = [BudDialApp new];
         app.delegate = delegate;
         [app run];
     }

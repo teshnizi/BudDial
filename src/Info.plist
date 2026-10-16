@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Buddial</string>
+	<string>BudDial</string>
 	<key>CFBundleExecutable</key>
-	<string>Buddial</string>
+	<string>BudDial</string>
 	<key>CFBundleIdentifier</key>
 	<string>dev.buddial</string>
 	<key>CFBundleName</key>
-	<string>Buddial</string>
+	<string>BudDial</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

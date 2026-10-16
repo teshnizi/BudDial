@@ -78,7 +78,7 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
     if (!self) return nil;
     _host = host;
     _modelsDirectory = modelsDirectory;
-    self.title = @"Buddial";
+    self.title = @"BudDial";
     self.titleVisibility = NSWindowTitleHidden;
     self.titlebarAppearsTransparent = YES;
     self.releasedWhenClosed = NO;
@@ -144,7 +144,7 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
     icon.translatesAutoresizingMaskIntoConstraints = NO;
     self.statusDot = label(@"●", 10, NSFontWeightRegular, NSColor.systemGreenColor);
     self.statusLabel = label(@"Ready", 12, NSFontWeightRegular, NSColor.secondaryLabelColor);
-    NSStackView *titles = stack(@[label(@"Buddial", 20, NSFontWeightSemibold, NSColor.labelColor),
+    NSStackView *titles = stack(@[label(@"BudDial", 20, NSFontWeightSemibold, NSColor.labelColor),
                                   stack(@[self.statusDot, self.statusLabel], NSUserInterfaceLayoutOrientationHorizontal, 5)],
                                 NSUserInterfaceLayoutOrientationVertical, 2);
     self.enabledSwitch = [NSSwitch new];
@@ -299,7 +299,7 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
     self.commandsSwitch = [self toggle:@selector(commandsChanged:)];
     self.replacementsButton = [NSButton buttonWithTitle:@"Edit…" target:self action:@selector(editReplacements:)];
     self.vocabularyField = [NSTextField textFieldWithString:@""];
-    self.vocabularyField.placeholderString = @"Buddial, Homebrew, Claude…";
+    self.vocabularyField.placeholderString = @"BudDial, Homebrew, Claude…";
     self.vocabularyField.target = self;
     self.vocabularyField.action = @selector(vocabularyChanged:);
     self.vocabularyField.cell.sendsActionOnEndEditing = YES;
@@ -435,7 +435,7 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
         self.sensorLabel.stringValue = @"Not covered";
     }
     BOOL microphone = [status[@"microphoneAllowed"] boolValue], accessibility = [status[@"accessibilityAllowed"] boolValue];
-    NSString *problem = !microphone ? @"Allow microphone access so Buddial can hear you."
+    NSString *problem = !microphone ? @"Allow microphone access so BudDial can hear you."
                       : !accessibility ? @"Allow Accessibility so text can be pasted at your cursor." : nil;
     if (problem) {
         self.bannerText.stringValue = problem;

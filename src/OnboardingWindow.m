@@ -107,7 +107,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
                               backing:NSBackingStoreBuffered defer:NO];
     if (!self) return nil;
     _host = host;
-    self.title = @"Welcome to Buddial";
+    self.title = @"Welcome to BudDial";
     self.titleVisibility = NSWindowTitleHidden;
     self.titlebarAppearsTransparent = YES;
     self.movableByWindowBackground = YES;
@@ -246,7 +246,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
 - (NSView *)welcomePage {
     // The stage plays each gesture in turn; the row it is showing stays bright.
     self.stage = [APGestureStage new];
-    NSStackView *page = [self pageWithHero:self.stage title:@"Welcome to Buddial"
+    NSStackView *page = [self pageWithHero:self.stage title:@"Welcome to BudDial"
                                   subtitle:@"Type with your voice by holding an AirPod. Works in any app."];
     self.gestureRows = @[
         [self item:@"mic.fill" title:@"Hold and talk" text:@"Cover a bud's sensor with your finger and speak. Let go, and the words appear at your cursor." accessory:nil width:kContent],
@@ -277,7 +277,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
 }
 - (NSView *)permissionsPage {
     NSStackView *page = [self pageWithSymbol:@"hand.raised.fill" tint:NSColor.controlAccentColor title:@"Two permissions"
-                                    subtitle:@"Buddial needs to hear you and to type for you."];
+                                    subtitle:@"BudDial needs to hear you and to type for you."];
     self.micButton = [NSButton buttonWithTitle:@"Allow" target:self action:@selector(allowMicrophone:)];
     self.accessibilityButton = [NSButton buttonWithTitle:@"Open Settings…" target:self action:@selector(allowAccessibility:)];
     self.micDone = [self allowedMark];
@@ -287,7 +287,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
         [self item:@"mic.fill" title:@"Microphone" text:@"Hears you only while you hold a bud." accessory:stack(@[self.micButton, self.micDone], NSUserInterfaceLayoutOrientationHorizontal, 0) width:inner],
         [self item:@"keyboard" title:@"Accessibility" text:@"Pastes the text and presses Return in the app you're using." accessory:stack(@[self.accessibilityButton, self.accessibilityDone], NSUserInterfaceLayoutOrientationHorizontal, 0) width:inner]]];
     [self add:panel to:page];
-    self.accessibilityHint = paragraph(@"In System Settings, turn on Buddial in the list, then come back here.", 12, NSColor.secondaryLabelColor, kContent);
+    self.accessibilityHint = paragraph(@"In System Settings, turn on BudDial in the list, then come back here.", 12, NSColor.secondaryLabelColor, kContent);
     self.accessibilityHint.alignment = NSTextAlignmentCenter;
     self.accessibilityHint.hidden = YES;
     [self add:self.accessibilityHint to:page];
@@ -295,7 +295,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
 }
 - (NSView *)airPodsPage {
     NSStackView *page = [self pageWithSymbol:@"airpods" tint:NSColor.controlAccentColor title:@"Choose your AirPods"
-                                    subtitle:@"Buddial listens to one bud at a time. While both are in your ears, it stays out of the way."];
+                                    subtitle:@"BudDial listens to one bud at a time. While both are in your ears, it stays out of the way."];
     self.devicePopup = [NSPopUpButton new];
     self.devicePopup.target = self;
     self.devicePopup.action = @selector(deviceChosen:);
@@ -332,7 +332,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     self.downloadBox = [self panel:@[download]];
     [self add:self.downloadBox to:page];
 
-    // A small chat: Buddial pastes into the field, a tap sends it up as a bubble.
+    // A small chat: BudDial pastes into the field, a tap sends it up as a bubble.
     NSBox *chat = box(NSColor.textBackgroundColor, 10, YES);
     NSView *thread = [NSView new];
     thread.translatesAutoresizingMaskIntoConstraints = NO;
@@ -358,7 +358,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     self.practice.textContainerInset = NSMakeSize(6, 9);
     self.practice.automaticQuoteSubstitutionEnabled = NO;
     self.practice.automaticSpellingCorrectionEnabled = NO;
-    self.placeholder = label(@"Hold a bud and say “Hello, Buddial.”", 14, NSFontWeightRegular, NSColor.placeholderTextColor);
+    self.placeholder = label(@"Hold a bud and say “Hello, BudDial.”", 14, NSFontWeightRegular, NSColor.placeholderTextColor);
     [chat.contentView addSubview:thread];
     [chat.contentView addSubview:line];
     [chat.contentView addSubview:scroll];
@@ -405,8 +405,8 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     self.loginSwitch.state = NSControlStateValueOn;
     CGFloat inner = kContent - 28;
     [self add:[self panel:@[
-        [self item:@"menubar.rectangle" title:@"In your menu bar" text:@"Click the AirPods icon for settings, pausing and quitting." accessory:nil width:inner],
-        [self item:@"power" title:@"Open at login" text:@"Start Buddial when you log in." accessory:self.loginSwitch width:inner]]] to:page];
+        [self item:@"menubar.rectangle" title:@"In your menu bar" text:@"Click the AirPods icon for settings, or to disable or quit BudDial." accessory:nil width:inner],
+        [self item:@"power" title:@"Open at login" text:@"Start BudDial when you log in." accessory:self.loginSwitch width:inner]]] to:page];
     return page;
 }
 
@@ -421,7 +421,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     }];
     self.backButton.hidden = step == kWelcome;
     self.nextButton.title = step == kWelcome ? @"Get Started" : step == kDone ? @"Done" : @"Continue";
-    // On the practice step Return belongs to the text box: Buddial's tap presses it there.
+    // On the practice step Return belongs to the text box: BudDial's tap presses it there.
     self.nextButton.keyEquivalent = step == kPractice ? @"" : @"\r";
     if (step == kWelcome) [self.stage start];
     else [self.stage stop];
@@ -491,7 +491,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     if (!address.length) text = @"Choose your AirPods above.";
     else if (![status[@"connected"] boolValue]) text = @"Not connected yet. Connect them to this Mac from Control Center, then try again.";
     else if ([sensor isEqual:@"worn"]) text = @"Both buds are in your ears. Take one out.";
-    else if (covered) text = @"Got it. Buddial can feel your touch.";
+    else if (covered) text = @"Got it. BudDial can feel your touch.";
     else if (self.touched) text = @"That works. Continue when you're ready.";
     else text = @"Take one bud out and cover the side that rests in your ear with a fingertip.";
     self.touchStatus.stringValue = text;

@@ -15,7 +15,7 @@ static NSTextField *label(NSString *text, CGFloat size, NSFontWeight weight) {
         styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskNonactivatingPanel
         backing:NSBackingStoreBuffered defer:NO];
     if (!self) return nil;
-    self.title = @"Buddial — Live";
+    self.title = @"BudDial — Live";
     self.level = NSFloatingWindowLevel;
     self.hidesOnDeactivate = NO;
     self.releasedWhenClosed = NO;
@@ -87,7 +87,7 @@ static NSTextField *label(NSString *text, CGFloat size, NSFontWeight weight) {
     NSStackView *buttons = [NSStackView new];
     buttons.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     buttons.spacing = 8;
-    self.pauseButton = [NSButton buttonWithTitle:@"Pause" target:controller action:@selector(toggle:)];
+    self.pauseButton = [NSButton buttonWithTitle:@"Disable" target:controller action:@selector(toggle:)];
     [buttons addArrangedSubview:self.pauseButton];
     [buttons addArrangedSubview:[NSButton buttonWithTitle:@"Settings…" target:controller action:@selector(showSettings:)]];
     self.transcriptCopyButton = [NSButton buttonWithTitle:@"Copy transcript" target:controller action:@selector(copyTranscript:)];
@@ -122,7 +122,7 @@ static NSTextField *label(NSString *text, CGFloat size, NSFontWeight weight) {
     self.timingLabel.stringValue = [NSString stringWithFormat:@"Hold  %4.0f / %.0f ms    Last touch  %@\nBluetooth log → app  %@    Pre-roll kept  %@\nRelease → text  %@    (speech engine  %@)",
         hold, threshold, ms(@"lastTouchMs"), ms(@"logDeliveryMs"), ms(@"preRollMs"), ms(@"releaseToTextMs"), ms(@"transcriptionMs")];
     self.healthLabel.stringValue = [NSString stringWithFormat:@"AirPods connected: %@  ·  Event reader: %@\nAccessibility: %@  ·  Microphone: %@\nSpeech engine: %@ · %@\nCues: %@", [s[@"bluetoothConnected"] boolValue] ? @"yes" : @"no", [s[@"bluetoothReader"] boolValue] ? @"running" : @"stopped", [s[@"accessibility"] boolValue] ? @"allowed" : @"NOT allowed", [s[@"microphoneAllowed"] boolValue] ? @"allowed" : @"NOT allowed", s[@"backend"], s[@"engineStatus"], s[@"cueOutput"]];
-    self.pauseButton.title = [s[@"controlsPaused"] boolValue] ? @"Resume" : @"Pause";
+    self.pauseButton.title = [s[@"controlsPaused"] boolValue] ? @"Enable" : @"Disable";
     self.transcriptCopyButton.enabled = [s[@"hasTranscript"] boolValue];
     double level = [s[@"levelDb"] doubleValue];
     self.microphoneLevel.doubleValue = MIN(1, MAX(0, (level + 60) / 60));

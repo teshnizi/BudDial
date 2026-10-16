@@ -20,7 +20,7 @@ static NSString *const kHeard = @"heard", *const kWrite = @"write";
 
     NSTextField *title = [NSTextField labelWithString:@"Replacements"];
     title.font = [NSFont systemFontOfSize:13 weight:NSFontWeightSemibold];
-    NSTextField *caption = [NSTextField wrappingLabelWithString:@"When a transcript contains the left side, Buddial writes the right side instead. Whole words, any capitalization. The right side is also given to the speech engine as a word you use."];
+    NSTextField *caption = [NSTextField wrappingLabelWithString:@"When a transcript contains the left side, BudDial writes the right side instead. Whole words, any capitalization. The right side is also given to the speech engine as a word you use."];
     caption.font = [NSFont systemFontOfSize:11];
     caption.textColor = NSColor.secondaryLabelColor;
     caption.preferredMaxLayoutWidth = 420;

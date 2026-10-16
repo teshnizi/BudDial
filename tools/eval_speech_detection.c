@@ -1,4 +1,4 @@
-// Speech / no-speech evaluation for Buddial's touch decision (main.m: speech iff speechSeconds >= 0.12).
+// Speech / no-speech evaluation for BudDial's touch decision (main.m: speech iff speechSeconds >= kSpeechSeconds).
 //
 // Every test clip is built in memory from the user's bench takes plus synthetic noise; nothing is
 // written to disk. Each clip is measured with:
@@ -26,7 +26,7 @@
 #define TOUCH 9600             // every clip has 0.6 s of pre-roll: the touch is at 0.6 s
 #define FILE_TOUCH 1600        // bench files were saved after analyzeTake's cut: 100 ms before the touch
 #define MAXTAKES 32
-#define CUTOFF 0.12            // kSpeechSeconds in src/main.m
+#define CUTOFF 0.08            // kSpeechSeconds in src/main.m
 #define CUE_SHARE 0.5          // a frame is "cue" when this share of its power is in 300-470 Hz
 #define CUE_WINDOW (RATE * 6 / 10)   // cue frames are only looked for in the first 0.6 s after the touch
 
@@ -234,7 +234,7 @@ static void add_babble(float *out, int n, int exclude, double db) {
     for (int i = 0; i < n; i++) out[i] += sum[i];
     free(sum);
 }
-// Buddial's start cue (Feedback.m glide 330 to 440 Hz, 140 ms, same envelope) as the mic hears it:
+// BudDial's start cue (Feedback.m glide 330 to 440 Hz, 140 ms, same envelope) as the mic hears it:
 // peak level and delay after the touch calibrated from the real cues in the bench takes.
 static void add_cue(float *out, int n, int at) {
     int len = RATE * 140 / 1000;
@@ -394,9 +394,9 @@ static double energy_speech(const float *x, int n, int touch, const EnergyVarian
 }
 
 static const EnergyVariant variants[] = {
-    {"Ac", "A, but start-cue frames are not counted (power share in 300-470 Hz >= 0.5, within 0.6 s after the touch)", -45, 10, 0, 1, 1},
-    {"B1", "Ac with the cap removed: threshold = max(p20 + 10, -52)", 0, 10, 0, 1, 1},
-    {"B2", "Ac with floor = min(p20 pre-roll, p20 take), no cap, margin 6 dB, only runs >= 3 frames (60 ms)", 0, 6, 1, 3, 1},
+    {"Ac", "A, but start-cue frames are not counted (power share in 300-470 Hz >= 0.5, within 0.6 s after the touch)", -45, 10, 0, 1, 1, 0},
+    {"B1", "Ac with the cap removed: threshold = max(p20 + 10, -52)", 0, 10, 0, 1, 1, 0},
+    {"B2", "Ac with floor = min(p20 pre-roll, p20 take), no cap, margin 6 dB, only runs >= 3 frames (60 ms)", 0, 6, 1, 3, 1, 0},
     {"B3", "Ac, and the threshold is also at least p20 + 4 dB: max(min(p20, -45) + 10, p20 + 4, -52)", -45, 10, 0, 1, 1, 4},
 };
 #define NVARIANTS (int)(sizeof variants / sizeof variants[0])
@@ -643,8 +643,8 @@ int main(int argc, char **argv) {
     const char *home = getenv("HOME");
     char dir[1024], model[1024];
     if (argc > 1) snprintf(dir, sizeof dir, "%s", argv[1]);
-    else snprintf(dir, sizeof dir, "%s/Library/Application Support/Buddial/bench/2026-10-15-144714", home);
-    snprintf(model, sizeof model, "%s/Library/Application Support/Buddial/models/ggml-silero-v6.2.0.bin", home);
+    else snprintf(dir, sizeof dir, "%s/Library/Application Support/BudDial/bench/2026-10-15-144714", home);
+    snprintf(model, sizeof model, "%s/Library/Application Support/BudDial/models/ggml-silero-v6.2.0.bin", home);
     rng_state = 7;
     for (int t = 1; t < 100 && ntakes < MAXTAKES; t++) ntakes += load_take(&takes[ntakes], dir, t);
     if (ntakes < 5) { fprintf(stderr, "need at least 5 takes in %s\n", dir); return 1; }

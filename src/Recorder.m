@@ -15,16 +15,29 @@ typedef struct { NSUInteger cut; double speechSeconds; } APTakeAnalysis;
 // is speech throughout still counts as speech). Pre-roll audio is kept only for
 // speech that runs across the touch: walking back from the touch, the first pause
 // of 200 ms or more ends the utterance, and everything before it is cut.
+// The start cue comes back through the mic 100-200 ms after the touch. Frames in the 0.6 s after
+// the touch with at least half their power in its band (300-470 Hz) are not counted as speech: on
+// the 2026-10-15 takes the cue added 0.06-0.10 s to every touch, and no real speech frame in that
+// window looked like it (tools/eval_speech_detection.c measures both).
 static APTakeAnalysis analyzeTake(const int16_t *x, NSUInteger n, NSUInteger touch) {
     const NSUInteger frame = 320;
     NSUInteger frames = n / frame;
     APTakeAnalysis result = {0, 0};
     if (frames < 5) return result;
-    double *db = malloc(frames * sizeof(double)), *sorted = malloc(frames * sizeof(double));
+    double *db = malloc(frames * sizeof(double)), *sorted = malloc(frames * sizeof(double)), *cueShare = malloc(frames * sizeof(double));
+    // RBJ band-pass biquad, 0 dB peak at 375 Hz, 170 Hz wide: the start cue's band.
+    double w0 = 2 * M_PI * 375 / kRate, q = 375.0 / 170, alpha = sin(w0) / (2 * q), a0 = 1 + alpha;
+    double b0 = alpha / a0, b2 = -alpha / a0, a1 = -2 * cos(w0) / a0, a2 = (1 - alpha) / a0;
+    double x1 = 0, x2 = 0, y1 = 0, y2 = 0;
     for (NSUInteger f = 0; f < frames; f++) {
-        double sum = 0;
-        for (NSUInteger i = 0; i < frame; i++) { double v = x[f * frame + i] / 32768.0; sum += v * v; }
+        double sum = 0, band = 0;
+        for (NSUInteger i = 0; i < frame; i++) {
+            double v = x[f * frame + i] / 32768.0, y = b0 * v + b2 * x2 - a1 * y1 - a2 * y2;
+            x2 = x1; x1 = v; y2 = y1; y1 = y;
+            sum += v * v; band += y * y;
+        }
         db[f] = sorted[f] = 20 * log10(MAX(1e-5, sqrt(sum / frame)));
+        cueShare[f] = sum > 0 ? band / sum : 0;
     }
     for (NSUInteger i = 1; i < frames; i++) {   // insertion sort: frames ≤ 9000
         double v = sorted[i]; NSUInteger j = i;
@@ -41,9 +54,10 @@ static APTakeAnalysis analyzeTake(const int16_t *x, NSUInteger n, NSUInteger tou
             break;
         }
     }
-    NSUInteger speech = 0;
-    for (NSUInteger f = first; f < frames; f++) if (db[f] > threshold) speech++;
-    free(db); free(sorted);
+    NSUInteger speech = 0, cueEnd = touchFrame + 30;   // 0.6 s
+    for (NSUInteger f = first; f < frames; f++)
+        if (db[f] > threshold && !(f >= touchFrame && f < cueEnd && cueShare[f] >= .5)) speech++;
+    free(db); free(sorted); free(cueShare);
     result.cut = first * frame;
     result.speechSeconds = speech * 0.02;
     return result;

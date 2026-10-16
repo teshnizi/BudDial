@@ -110,7 +110,7 @@ NSString *APModelTitle(NSString *file) {
     self.stopping = NO;
     NSString *executable = [self executable];
     if (!executable) {
-        [self setState:@"Engine missing from the app; reinstall Buddial" ready:NO];
+        [self setState:@"Engine missing from the app; reinstall BudDial" ready:NO];
         [self emit:@"Speech engine unavailable: whisper-server is missing from the app bundle (broken build)."];
         [self flushWaiting];
         return;

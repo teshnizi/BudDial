@@ -90,7 +90,7 @@ static APStagePhase gestureAt(double t) { return t < 5.0 ? APStageHoldAndTalk : 
     [self.bubbleText removeFromSuperlayer];
     [self.bubble addSublayer:self.bubbleText];
 
-    // The same pill Buddial shows at the bottom of the screen.
+    // The same pill BudDial shows at the bottom of the screen.
     self.pill = [CALayer layer];
     self.pill.cornerRadius = 14;
     self.pill.borderWidth = 1;
@@ -277,7 +277,7 @@ static CGFloat widthOf(NSString *string, CGFloat size, NSFontWeight weight) {
     self.bubbleText.frame = CGRectMake(12, 6, bubbleWidth - 24, 17);
     self.bubbleText.string = kFirst;
 
-    // The pill: what Buddial shows at each moment.
+    // The pill: what BudDial shows at each moment.
     NSString *status = nil;
     NSColor *dot = NSColor.systemBlueColor;
     if (touching >= 0) {

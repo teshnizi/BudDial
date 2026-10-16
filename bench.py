@@ -11,11 +11,11 @@ latency per take, then the worst sentences for the configuration the app uses no
 """
 import argparse, json, os, re, socket, statistics, subprocess, sys, time, urllib.request, uuid
 
-DATA = os.path.expanduser('~/Library/Application Support/Buddial')   # the app's data: config, models, bench takes
+DATA = os.path.expanduser('~/Library/Application Support/BudDial')   # the app's data: config, models, bench takes
 MODELS = os.path.join(DATA, 'models')
 VAD = os.path.join(MODELS, 'ggml-silero-v6.2.0.bin')
 SERVER = next((p for p in ('/opt/homebrew/bin/whisper-server', '/usr/local/bin/whisper-server') if os.path.exists(p)), None)
-DEFAULT_VOCABULARY = 'Buddial, Homebrew, Cursor Bugbot, Codex, README, AirPods, Whisper'
+DEFAULT_VOCABULARY = 'BudDial, Homebrew, Cursor Bugbot, Codex, README, AirPods, Whisper'
 
 def words(text):
     text = re.sub(r"[^a-z0-9' ]+", ' ', text.lower().replace('-', ' '))

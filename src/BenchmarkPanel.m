@@ -3,7 +3,7 @@
 // Everyday requests to coding assistants, project jargon, and short replies (the hardest case).
 static NSArray<NSString *> *sentences(void) {
     return @[@"Can you check why the build is failing on the main branch?",
-             @"Install Buddial with Homebrew and grant microphone access.",
+             @"Install BudDial with Homebrew and grant microphone access.",
              @"Let's ship the settings panel today and benchmark the models tomorrow.",
              @"Whisper runs locally on the Mac, so nothing leaves the device.",
              @"Open a pull request, then ask Cursor Bugbot to review it.",

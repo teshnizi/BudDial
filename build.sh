@@ -1,11 +1,11 @@
 #!/bin/zsh
-# Tests, builds and installs Buddial. The app is signed with a stable
+# Tests, builds and installs BudDial. The app is signed with a stable
 # local identity so macOS keeps its Microphone and Accessibility grants across
 # rebuilds (an ad-hoc signature changes every build and silently loses them).
 set -eu
 root="${0:A:h}"
 src="$root/src"
-app_dir="$HOME/Applications/Buddial.app"
+app_dir="$HOME/Applications/BudDial.app"
 # The Command Line Tools' macOS 27.0 SDK ships malformed .tbd stubs; use 26.5 where it is installed.
 sdk_dir="/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk"
 [[ -d "$sdk_dir" ]] || sdk_dir=$(xcrun --show-sdk-path)
@@ -160,7 +160,7 @@ clang -isysroot "$sdk_dir" -fobjc-arc -Wall -Wextra -framework Foundation "$src/
 clang -isysroot "$sdk_dir" -fobjc-arc -Wall -Wextra -Werror -framework Foundation "$src/commands_test.m" "$src/Commands.m" -o "$work/commands-test"
 "$work/commands-test"
 
-stage="$work/Buddial.app"
+stage="$work/BudDial.app"
 mkdir -p "$stage/Contents/MacOS"
 cp "$src/Info.plist" "$stage/Contents/Info.plist"
 # macOS 26 is the floor: Homebrew's whisper.cpp, bundled below, is built for it.
@@ -170,7 +170,7 @@ clang -isysroot "$sdk_dir" -mmacosx-version-min=26.0 -fobjc-arc -O2 -Wall -Wextr
     "$src/main.m" "$src/BudSensor.m" "$src/Recorder.m" "$src/Transcriber.m" "$src/Feedback.m" "$src/Overlay.m" \
     "$src/SettingsWindow.m" "$src/BenchmarkPanel.m" "$src/MonitorPanel.m" "$src/DebugClips.m" "$src/ModelStore.m" "$src/OnboardingWindow.m" "$src/GestureStage.m" \
     "$src/Commands.m" "$src/ReplacementsSheet.m" \
-    -o "$stage/Contents/MacOS/Buddial"
+    -o "$stage/Contents/MacOS/BudDial"
 bundle_engine
 
 ensure_identity

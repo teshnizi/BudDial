@@ -1,14 +1,14 @@
-# How Buddial works
+# How BudDial works
 
 Measurements in this file come from the development Mac (AirPods 4 with ANC, MacBook Pro built-in microphone) in October 2026.
 
 ## The touch
 
-AirPods report automatic ear detection to `bluetoothd`. Buddial runs `log stream` on bluetoothd's messages for the chosen AirPods and treats "in ear" on a bud that is out of the ear as a finger covering its sensor. Whichever bud changes state is the button.
+AirPods report automatic ear detection to `bluetoothd`. BudDial runs `log stream` on bluetoothd's messages for the chosen AirPods and treats "in ear" on a bud that is out of the ear as a finger covering its sensor. Whichever bud changes state is the button.
 
 - Delivery from bluetoothd to the app takes 2 to 9 ms.
 - An idle AirPods link sits in Bluetooth sniff mode (441 ms interval), entered 20 s after the last activity, so a touch can reach the Mac up to about 0.45 s late. No public API keeps the link awake (name requests are cached, L2CAP opens are refused).
-- The bud debounces its sensor. In 221 sensor changes the shortest uncovered gap ever reported was 549 ms. Two quick taps therefore arrive as one touch of 0.2 to 0.9 s, as two touches, or as a glitch, depending on timing. Buddial does not count taps.
+- The bud debounces its sensor. In 221 sensor changes the shortest uncovered gap ever reported was 549 ms. Two quick taps therefore arrive as one touch of 0.2 to 0.9 s, as two touches, or as a glitch, depending on timing. BudDial does not count taps.
 
 ### Gestures
 
@@ -23,9 +23,10 @@ AirPods report automatic ear detection to `bluetoothd`. Buddial runs `log stream
 While a bud is held, the pill at the bottom of the screen says what letting go would do, by the same rules: **Release to send ↵** (blue) until the hold time, and with no speech until 0.95 s; **Listening** (red) once speech is heard after the hold time; **Release to undo** (orange) after 0.95 s of silence when there is a dictation to remove. Every one of them keeps the live voice level bars, since the mic records from the moment of the touch. The speech it goes by is measured every 100 ms with the same analysis the release uses, over the first 15 s of a touch. Each change is logged ("Hint at 640 ms (speech 0.00 s): Release to send.").
 
 - A tap within 1.5 s of a Return belongs to the same gesture and is ignored, so a double tap sends once. If text is still being transcribed, Return waits until it is pasted.
-- "No speech" means less than 0.12 s above the noise floor. In the event log, all 11 silent holds of 0.95 s or more measured at most 0.10 s, and the quietest real dictation 0.14 s. Of 10 short touches that reached transcription, 5 were taps the level meter mistook for speech (all at most 0.26 s); they now count as taps.
-- Known limit: in a noisy room a silent hold can paste a stray word. A long touch with a little sound and no words stays an error ("No speech recognized"), not a silent hold, because it looks exactly like a quiet dictation Whisper could not make out, and deleting text by mistake is worse than retrying. But with the room floor near -34 dBFS, silent holds measured 0.16 to 0.30 s of sound (start cue plus noise), and Whisper turned that into a word, sometimes one echoed from the text before the cursor ("Unde." after "undue"). Transcripts made only of hums ("Mhm. Mhm.") are rejected. In a quieter room silent holds measured 0.00 to 0.10 s and work.
-- A silent hold removes the last dictation by backspacing it, and again for the one before, back to the last Return. It does nothing if another app is in front or you typed or clicked since Buddial's last keystroke (the cursor may have moved; macOS reports the time since the last physical key or click).
+- "No speech" means less than 0.08 s above the noise floor, not counting the start cue. The cue comes back through the mic 100 to 200 ms after the touch; frames in the 0.6 s after the touch with at least half their power in its band (300 to 470 Hz) are skipped. Before that, the cue alone added 0.06 to 0.10 s to every touch, and silent holds failed in any room louder than about -45 dBFS. `tools/eval_speech_detection.sh` replays the benchmark takes mixed with fan noise, distant talkers and the cue: with the cue skipped and the 0.08 s cutoff, no silent hold or tap failed in a -43 dBFS room (22 to 50% before) and 3.8% at -38 (48% before); single short words were missed 33% of the time at -43 (64% before) and full sentences never. Silero speech detection was tried and lost on this mic: it missed about half of real sentences and counted the cue as speech.
+- Of 10 short touches that reached transcription, 5 were taps the level meter mistook for speech (all at most 0.26 s); a short touch with no recognizable words now counts as a tap.
+- Known limit: in rooms at about -36 dBFS or louder, the user's voice at the built-in mic was only 0 to 3 dB above the noise, and no detector tested separated them. There a silent hold reads as speech and does not undo (the safe failure: nothing is deleted by mistake); Whisper may turn the noise into a stray word. Say "scratch that" instead. A long touch with a little sound and no words stays an error, not a silent hold, because it looks exactly like a quiet dictation Whisper could not make out. Transcripts made only of hums ("Mhm. Mhm.") are rejected.
+- A silent hold removes the last dictation by backspacing it, and again for the one before, back to the last Return. It does nothing if another app is in front or you typed or clicked since BudDial's last keystroke (the cursor may have moved; macOS reports the time since the last physical key or click).
 - Consecutive dictations into the same app are joined with a space until Return.
 
 ### Wearing
@@ -34,7 +35,7 @@ Both buds in ear means the AirPods are worn: any take in progress is discarded, 
 
 ### The stem
 
-Stem presses reach the Mac only from a bud that is in an ear (as AVRCP play and pause, also delivered to the music app), and press-and-hold switches noise control. From a bud in the hand nothing arrives, so Buddial does not use the stem.
+Stem presses reach the Mac only from a bud that is in an ear (as AVRCP play and pause, also delivered to the music app), and press-and-hold switches noise control. From a bud in the hand nothing arrives, so BudDial does not use the stem.
 
 ## Audio
 
@@ -66,7 +67,7 @@ To run it on your voice: Settings → Diagnostics… → Benchmark… shows 12 s
 
 ## Pasting
 
-The text goes on the clipboard, Buddial presses ⌘V, and the previous clipboard is restored 0.5 s later. Password fields are skipped. Without Accessibility the text is left on the clipboard instead.
+The text goes on the clipboard, BudDial presses ⌘V, and the previous clipboard is restored 0.5 s later. Password fields are skipped. Without Accessibility the text is left on the clipboard instead.
 
 ## Signing and permissions
 
@@ -74,7 +75,7 @@ The text goes on the clipboard, Buddial presses ⌘V, and the previous clipboard
 
 ## Diagnostics
 
-The data folder is `~/Library/Application Support/Buddial`:
+The data folder is `~/Library/Application Support/BudDial`:
 
 - `config.json`: settings. Keys only there: `maximumHoldSeconds` (90), `preRollSeconds` (0.6), `vad` (false), `beamSize` (5), `showMonitorOnLaunch` (false).
 - `events.log`: timings and decisions, never transcript text.
