@@ -10,7 +10,15 @@ Take an AirPod out, cover its sensor with a fingertip and talk. Let go, and your
 | **Tap** | Press Return, to send a message. |
 | **Hold silently** | Cover the bud for a second without talking to remove the last dictation. Repeat to remove the one before. |
 
-While both AirPods are in your ears, Buddial leaves them alone.
+While both AirPods are in your ears, Buddial leaves them alone. While you hold a bud, the pill at the bottom of the screen says what letting go will do: **Release to send**, **Listening**, or **Release to undo**.
+
+**Voice commands** work when they start what you say:
+
+| Say | What happens |
+|---|---|
+| "Spotlight Claude Code" | Opens Spotlight and types "Claude Code". Tap to open the result. |
+| "Scratch that" | Removes the last dictation. |
+| "New line" | A line break that does not send. |
 
 ## Install
 
@@ -32,7 +40,7 @@ Buddial lives in the menu bar (the AirPods icon). Settings, pause and quit are t
 
 ## Settings
 
-Menu bar icon → Settings… (⌘,): your AirPods (with a live sensor indicator), how long to hold before dictating, tap to send, silent hold deletes, microphone, Instant start, speech model, language, vocabulary (names and terms you say), text before the cursor, sounds, and open at login.
+Menu bar icon → Settings… (⌘,): your AirPods (with a live sensor indicator), how long to hold before dictating, tap to send, silent hold deletes, microphone, Instant start, speech model, language, vocabulary (names and terms you say), replacements (fix words it keeps getting wrong, like "clawed code" to "Claude Code"), voice commands, text before the cursor, sounds, and open at login.
 
 ## Build from source
 
