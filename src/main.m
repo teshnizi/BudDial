@@ -16,6 +16,11 @@
 #import "Transcriber.h"
 
 static double now(void) { return NSProcessInfo.processInfo.systemUptime; }
+// Touch rules, shared by the live hint and the decision on release. Shorter than the hold time a
+// touch is a tap; up to kQuickTouchSeconds with no speech it is still a tap; longer with no speech
+// it is a silent hold. "No speech" is under kSpeechSeconds above the take's noise floor.
+static const double kQuickTouchSeconds = .95, kSpeechSeconds = .12;
+typedef NS_ENUM(NSInteger, APHint) { APHintNone, APHintSend, APHintListen, APHintUndo };
 static void (^eventSink)(NSString *);
 static NSString *support(void) {
     static NSString *path;
@@ -76,6 +81,8 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     pid_t lastInsertPID;
     double lastInsertAt, lastEnterAt, lastSyntheticKeyAt;
     BOOL enterSinceInsert, modelDownloading;
+    double liveSpeech;   // speech heard so far in the current touch
+    APHint hint;         // what the pill says letting go would do
     dispatch_source_t terminationSource;
 }
 @property NSMutableDictionary *config;
@@ -136,6 +143,12 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
         if (!strong) return;
         strong->levelDb = db;
         [strong.overlay setLevel:db];
+    };
+    self.recorder.onSpeech = ^(double seconds) {
+        BuddialApp *strong = weakSelf;
+        if (!strong || !strong->gesture.tracking) return;
+        strong->liveSpeech = seconds;
+        [strong updateHint];
     };
     self.recorder.keepOpen = [[self settingValue:@"instantStart"] boolValue];
 
@@ -262,6 +275,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 - (void)resetGesture {
     [self.recorder discard];
     committed = NO;
+    hint = APHintNone;
     APCancel(&gesture); APObserve(&gesture, NO, now());
     sensorCovered = NO;
 }
@@ -308,8 +322,9 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
             // Recording starts here (pre-roll included); the hold threshold only separates taps.
             [self.recorder beginAt:now()];
             [self.feedback play:APCueStart];
-            [self.overlay showListening];
-            self.actionText = @"Listening — release to insert";
+            liveSpeech = 0;
+            hint = APHintNone;
+            [self updateHint];
             break;
         case APStartDictation:
             if (![self enabled]) { [self.recorder discard]; break; }
@@ -318,14 +333,16 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
             break;
         case APStopDictation:
             if (committed) [self finishTake];
-            else [self.recorder discard];
+            else { [self.recorder discard]; hint = APHintNone; }
             break;
         case APTap:
             [self.recorder discard];
+            hint = APHintNone;
             [self tapToSend:lastTouchMs];
             break;
         case APDiscardTouch:
             [self.recorder discard];
+            hint = APHintNone;
             [self.overlay hide];
             break;
     }
@@ -342,7 +359,24 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
         [self.overlay flash:[NSString stringWithFormat:@"Over %.0f s: discarded (bud treated as worn)", gesture.maximumHoldSeconds] tone:APOverlayToneError];
         record(@"Hold exceeded the maximum: recording discarded; that bud is treated as worn until it leaves the ear.");
     } else [self handle:action];
-    if (gesture.tracking) [self updateStatus];
+    if (gesture.tracking) { [self updateHint]; [self updateStatus]; }
+}
+// While a bud is held, the pill says what letting go now would do, by the rules the release uses.
+- (void)updateHint {
+    if (!gesture.tracking || !self.recorder.taking) return;
+    double held = now() - gesture.pressedAt;
+    BOOL quiet = liveSpeech < kSpeechSeconds;
+    APHint next = APHintListen;
+    if (self.benchmark.recording) next = APHintListen;
+    else if ((held < gesture.holdSeconds || (quiet && held < kQuickTouchSeconds)) && [[self settingValue:@"tapToSend"] boolValue]) next = APHintSend;
+    else if (quiet && held >= kQuickTouchSeconds && [[self settingValue:@"silentHoldDeletes"] boolValue] && ![self whyNothingToDelete]) next = APHintUndo;
+    if (next == hint) return;
+    hint = next;
+    if (next == APHintSend) [self.overlay showHint:@"Release to send ↵" color:NSColor.systemBlueColor];
+    else if (next == APHintUndo) [self.overlay showHint:@"Release to undo" color:NSColor.systemOrangeColor];
+    else [self.overlay showListening];
+    self.actionText = next == APHintSend ? @"Release to send" : next == APHintUndo ? @"Release to undo" : @"Listening — release to insert";
+    record([NSString stringWithFormat:@"Hint at %.0f ms (speech %.2f s): %@.", held * 1000, liveSpeech, self.actionText]);
 }
 - (void)slowTick:(NSTimer *)timer {
     (void)timer;
@@ -445,9 +479,12 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     inFlight++;
     double released = now();
     double heldMs = (released - gesture.pressedAt) * 1000;
+    BOOL listening = hint == APHintListen;
+    hint = APHintNone;
     [self.feedback play:APCueStop];
-    [self.overlay showWorking:@"Transcribing…"];
-    self.actionText = @"Transcribing…";
+    // A take that was going to send or undo keeps that hint while the last audio is checked.
+    if (listening) [self.overlay showWorking:@"Transcribing…"];
+    self.actionText = listening ? @"Transcribing…" : self.actionText;
     NSString *contextSummary = nil;
     NSString *prompt = [self promptForTake:&contextSummary];
     __weak BuddialApp *weakSelf = self;
@@ -466,10 +503,10 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
         // No speech: a short touch is a tap (two quick taps also arrive as one such touch: the bud
         // never reports the gap between them); a longer one is a silent hold. Silent holds measured
         // ≤ 0.10 s of speech; the quietest real dictation 0.14 s.
-        if (take.speechSeconds < .12) {
-            if (heldMs >= 950 && ![[strong settingValue:@"silentHoldDeletes"] boolValue]) { [strong takeFailed:@"No speech heard"]; return; }
+        if (take.speechSeconds < kSpeechSeconds) {
+            if (heldMs >= kQuickTouchSeconds * 1000 && ![[strong settingValue:@"silentHoldDeletes"] boolValue]) { [strong takeFailed:@"No speech heard"]; return; }
             if (strong->inFlight) strong->inFlight--;
-            if (heldMs < 950) [strong tapToSend:heldMs];
+            if (heldMs < kQuickTouchSeconds * 1000) [strong tapToSend:heldMs];
             else [strong deleteLastDictation:[NSString stringWithFormat:@"Silent hold (%.0f ms)", heldMs]];
             return;
         }
@@ -483,7 +520,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
             [strong.debugClips finishDirectory:clip text:text ?: @"" metadata:@{@"transcriptionMs":@(elapsed), @"error":error ?: @""}];
             // A short touch with no words was a tap the level meter mistook for speech (5 of 10 such
             // touches in the log, all ≤ 0.26 s of "speech"): send instead of failing.
-            if (error && heldMs < 950 && [error isEqual:@"No speech recognized"]) {
+            if (error && heldMs < kQuickTouchSeconds * 1000 && [error isEqual:@"No speech recognized"]) {
                 if (strong->inFlight) strong->inFlight--;
                 record([NSString stringWithFormat:@"No words in a %.0f ms touch: treated as a tap.", heldMs]);
                 [strong tapToSend:heldMs];
@@ -624,20 +661,17 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
         record([trigger stringByAppendingString:@": delete queued until the text is pasted."]);
         return;
     }
-    NSString *last = self.deletable.lastObject, *why = nil;
-    if (!AXIsProcessTrusted()) why = @"Accessibility is off";
-    else if (!last) why = @"nothing dictated since the last Return";
-    else if (NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier != lastInsertPID) why = @"a different app is in front";
-    else if ([self userInputSinceLastKey]) why = @"you typed or clicked since, so the cursor may have moved";
+    NSString *why = [self whyNothingToDelete];
     if (why) {
         [self.feedback play:APCueError];
         [self.overlay flash:@"Nothing to delete" tone:APOverlayToneInfo];
         self.actionText = @"Nothing to delete";
         record([NSString stringWithFormat:@"%@: nothing deleted, %@.", trigger, why]);
-        if (last && !AXIsProcessTrusted()) [self.deletable removeAllObjects];
+        if (self.deletable.count && !AXIsProcessTrusted()) [self.deletable removeAllObjects];
         [self updateStatus];
         return;
     }
+    NSString *last = self.deletable.lastObject;
     __block NSUInteger characters = 0;
     [last enumerateSubstringsInRange:NSMakeRange(0, last.length) options:NSStringEnumerationByComposedCharacterSequences | NSStringEnumerationSubstringNotRequired
                           usingBlock:^(NSString *s, NSRange r, NSRange e, BOOL *stop) { characters++; }];
@@ -653,6 +687,16 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
             (unsigned long)characters, (unsigned long)self.deletable.count]);
     [self.onboarding noteDeleted];
     [self updateStatus];
+}
+// Why a silent hold would remove nothing right now; nil when it would. A dictation still being
+// transcribed counts: the removal waits for it.
+- (NSString *)whyNothingToDelete {
+    if (inFlight) return nil;
+    if (!AXIsProcessTrusted()) return @"Accessibility is off";
+    if (!self.deletable.count) return @"nothing dictated since the last Return";
+    if (NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier != lastInsertPID) return @"a different app is in front";
+    if ([self userInputSinceLastKey]) return @"you typed or clicked since, so the cursor may have moved";
+    return nil;
 }
 - (void)pressEnter {
     if (!AXIsProcessTrusted()) { [self.overlay flash:@"Allow Accessibility for Return" tone:APOverlayToneError]; return; }

@@ -25,6 +25,7 @@
 @property(readonly) BOOL open;
 @property(readonly) BOOL taking;
 @property(copy) void (^onLevel)(double db);        // main queue, ~20 Hz while taking
+@property(copy) void (^onSpeech)(double seconds);  // main queue, ~10 Hz for a take's first 15 s: speech heard so far
 @property(copy) void (^onEvent)(NSString *line);   // main queue
 - (void)applyKeepOpen;
 - (void)reopen;

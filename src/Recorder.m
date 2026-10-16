@@ -65,7 +65,7 @@ static APTakeAnalysis analyzeTake(const int16_t *x, NSUInteger n, NSUInteger tou
     AVCaptureSession *session;
     AVCaptureAudioDataOutput *output;
     NSMutableData *ring, *take;
-    double lastArrival, takeRequested, firstSampleAt, lastLevelPost, preRollMs, speechLeadMs;
+    double lastArrival, takeRequested, firstSampleAt, lastLevelPost, lastSpeechPost, preRollMs, speechLeadMs;
     BOOL speechLeadAtLeast;
     NSUInteger generation;
     id runtimeObserver;
@@ -162,7 +162,7 @@ static APTakeAnalysis analyzeTake(const int16_t *x, NSUInteger n, NSUInteger tou
     dispatch_async(queue, ^{
         self->generation++;
         self->take = [NSMutableData data];
-        self->takeRequested = touch; self->firstSampleAt = 0; self->preRollMs = 0; self->speechLeadMs = -1; self->speechLeadAtLeast = NO;
+        self->takeRequested = touch; self->firstSampleAt = 0; self->lastSpeechPost = 0; self->preRollMs = 0; self->speechLeadMs = -1; self->speechLeadAtLeast = NO;
         self.taking = YES;
         if (self->session && self->lastArrival > 0) {
             NSUInteger available = self->ring.length / 2;
@@ -199,6 +199,14 @@ static APTakeAnalysis analyzeTake(const int16_t *x, NSUInteger n, NSUInteger tou
     if (!self.taking || !take) return;
     if (!firstSampleAt) firstSampleAt = now;
     if (take.length < (NSUInteger)(kRate * 2 * 180)) [take appendData:part];
+    // Speech heard so far, measured exactly as the finished take will be, for the live "release to"
+    // hint. Only the first 15 s: the analysis sorts every frame, and by then the hint has settled.
+    if (now - lastSpeechPost >= .1 && now - takeRequested < 15) {
+        lastSpeechPost = now;
+        double heard = analyzeTake(take.bytes, take.length / 2, (NSUInteger)(preRollMs / 1000 * kRate)).speechSeconds;
+        void (^speech)(double) = self.onSpeech;
+        if (speech) dispatch_async(dispatch_get_main_queue(), ^{ speech(heard); });
+    }
     if (now - lastLevelPost < .05) return;
     lastLevelPost = now;
     const int16_t *samples = part.bytes;

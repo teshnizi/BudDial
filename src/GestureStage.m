@@ -12,11 +12,11 @@ static const APTouch kTouches[] = {
     {10.2, 10.6, 11.8, 12.3},   // silent hold: removes it again
 };
 enum { kTouchCount = 4, kWordCount = 4, kBars = 5 };
-static const double kLoop = 14, kPaste = .4, kDecide = .2, kSilentHold = .95;
+static const double kLoop = 14, kPaste = .4, kDecide = .2, kHoldTime = .55, kSilentHold = .95;
 static const double kFirstWords[kWordCount] = {1.0, 1.35, 1.6, 1.95}, kSecondWords[kWordCount] = {7.8, 8.0, 8.2, 8.4};
 static NSString *const kFirst = @"Running five minutes late", *const kSecond = @"See you at noon";
 // Where clicking a gesture starts the scene, and the still frame shown with Reduce Motion.
-static const double kPhaseStart[] = {0, 5.0, 9.6}, kStill[] = {2.2, 5.95, 11.4};
+static const double kPhaseStart[] = {0, 5.0, 9.6}, kStill[] = {2.2, 5.95, 11.7};
 static const CGFloat kWidth = 420, kHeight = 184;
 static const CGRect kBud = {{14, 44}, {100, 112}}, kField = {{150, 58}, {270, 36}};
 
@@ -281,7 +281,14 @@ static CGFloat widthOf(NSString *string, CGFloat size, NSFontWeight weight) {
     NSString *status = nil;
     NSColor *dot = NSColor.systemBlueColor;
     BOOL listening = NO;
-    if (touching >= 0 && !tap) { status = @"Listening"; dot = NSColor.systemRedColor; listening = YES; }
+    if (touching >= 0) {
+        // While held, the pill says what letting go would do, as in the app: send until the hold
+        // time (or, with no speech, until 0.95 s), listening once words are heard, undo after that.
+        double held = t - kTouches[touching].down;
+        if (silent && held >= kSilentHold) { status = @"Release to undo"; dot = NSColor.systemOrangeColor; }
+        else if (tap || silent || held < kHoldTime) status = @"Release to send ↵";
+        else { status = @"Listening"; dot = NSColor.systemRedColor; listening = YES; }
+    }
     else if (during(t, kTouches[0].up, firstLands) || during(t, kTouches[2].up, secondLands)) status = @"Transcribing…";
     else if (during(t, firstLands, firstLands + .8) || during(t, secondLands, secondLands + .8)) { status = @"Inserted"; dot = NSColor.systemGreenColor; }
     else if (during(t, sent, sent + .8)) status = @"Sent ↵";
