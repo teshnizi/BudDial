@@ -1,8 +1,8 @@
 # Local signing identity (private key): created per machine by build.sh
+signing/
 
 # Release packages: tools/make_release.sh
 dist/
-signing/
 
 # App data from builds up to 0.9, which kept it next to the source
 config.json
