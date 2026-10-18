@@ -5,7 +5,8 @@
 <p align="center"><b>Type with your voice by holding an AirPod.</b><br>
 A small Mac menu bar app. Your speech becomes text on your Mac; nothing is uploaded.</p>
 
-<p align="center"><a href="https://github.com/teshnizi/BudDial/releases/latest/download/BudDial.zip"><b>Download BudDial</b></a> (3.7 MB) · Apple silicon Mac, macOS 26 or later</p>
+<p align="center"><code>brew install --cask teshnizi/tap/buddial</code><br>
+or <a href="https://github.com/teshnizi/BudDial/releases/latest/download/BudDial.zip">download the app</a> (3.7 MB) · Apple silicon Mac, macOS 26 or later</p>
 
 <p align="center"><img src="docs/demo.gif" width="560" alt="A finger holds a bud while the words are spoken, a tap sends them, and a silent hold removes the next dictation"></p>
 
@@ -13,15 +14,30 @@ A small Mac menu bar app. Your speech becomes text on your Mac; nothing is uploa
 
 You need a Mac with Apple silicon on macOS 26 or later, and AirPods with automatic ear detection (tested with AirPods 4).
 
-1. **Download** [BudDial.zip](https://github.com/teshnizi/BudDial/releases/latest/download/BudDial.zip).
-2. **Move it to Applications.** Double-click `BudDial.zip`, then drag **BudDial** into your **Applications** folder.
-3. **Open it the first time** (only once). Open BudDial. macOS shows **"BudDial" Not Opened: Apple could not verify "BudDial" is free of malware**. That is expected: BudDial is not notarized by Apple yet. Click **Done** (not Move to Trash), then:
+1. **Install it** with [Homebrew](https://brew.sh):
+
+   ```sh
+   brew install --cask teshnizi/tap/buddial
+   ```
+
+2. **Open BudDial** from your Applications folder.
+3. **Follow the welcome guide.** It asks for two permissions (**Microphone**, to hear you, and **Accessibility**, to type into other apps), lets you pick your AirPods and test a touch, and has you try each gesture once. The speech model, about 550 MB, downloads in the background the first time.
+
+That's it: BudDial lives in your menu bar as a bud with three dots. Settings, Disable and Quit are in its menu. Update it with `brew upgrade --cask buddial`.
+
+BudDial is not notarized by Apple yet. So that it opens without the "Apple could not verify" stop, the Homebrew install removes macOS's downloaded-file flag from BudDial. The [cask](https://github.com/teshnizi/homebrew-tap/blob/main/Casks/buddial.rb) is one short file if you want to see exactly what it does. The download below keeps the flag, and macOS asks you once.
+
+<details>
+<summary>Install without Homebrew</summary>
+
+1. Download [BudDial.zip](https://github.com/teshnizi/BudDial/releases/latest/download/BudDial.zip), double-click it, and drag **BudDial** into your **Applications** folder.
+2. Open BudDial. macOS shows **"BudDial" Not Opened: Apple could not verify "BudDial" is free of malware**. Click **Done** (not Move to Trash), then:
    - open **System Settings → Privacy & Security**,
    - scroll down to *"BudDial" was blocked to protect your Mac*,
    - click **Open Anyway**, enter your password or use Touch ID, and click **Open**.
-4. **Follow the welcome guide.** It asks for two permissions (**Microphone**, to hear you, and **Accessibility**, to type into other apps), lets you pick your AirPods and test a touch, and has you try each gesture once. The speech model, about 550 MB, downloads in the background the first time.
+3. Follow the welcome guide. You only do step 2 once.
 
-That's it: BudDial lives in your menu bar as a bud with three dots. Settings, Disable and Quit are in its menu.
+</details>
 
 <details>
 <summary>Build it from source instead</summary>
@@ -101,7 +117,7 @@ The details, measurements and known limits are in [docs/how-it-works.md](docs/ho
 
 ## Uninstall
 
-Quit BudDial from its menu, delete BudDial from Applications and the folder `~/Library/Application Support/BudDial`, and remove BudDial from System Settings → Privacy & Security → Microphone and Accessibility.
+With Homebrew: quit BudDial from its menu and run `brew uninstall --zap --cask buddial` (`--zap` also deletes its settings and speech model). Otherwise, quit it, delete BudDial from Applications and the folder `~/Library/Application Support/BudDial`. Either way, remove BudDial from System Settings → Privacy & Security → Microphone and Accessibility.
 
 ## Development
 

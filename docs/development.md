@@ -31,14 +31,18 @@ Quit and reopen the app after a build. The minimum macOS (26) comes from Homebre
 | `tools/make_icon.sh` | Draws the app icon (`src/AppIcon.icns`, `docs/icon.png`) from the shared mark in `src/BudMark.m`. |
 | `tools/make_demo_gif.sh` | Renders the welcome animation to `docs/demo.gif` (needs `ffmpeg`). |
 | `tools/make_release.sh` | Builds from the committed source, checks the bundle, and packages `dist/BudDial.zip`. |
+| `tools/publish_cask.sh` | Writes the Homebrew cask for `dist/BudDial.zip` to [teshnizi/homebrew-tap](https://github.com/teshnizi/homebrew-tap) (`--print` only prints it). |
 
 ## Releases
 
 1. Bump `CFBundleShortVersionString` and `CFBundleVersion` in `src/Info.plist` and commit.
 2. `tools/make_release.sh` builds, verifies the signature, refuses to package if the bundle mentions your home folder or Homebrew paths, and writes `dist/BudDial.zip` with `ditto` (which keeps the signatures).
 3. `gh release create v<version> dist/BudDial.zip --title "BudDial <version>" --notes-file <notes>`.
+4. `tools/publish_cask.sh` points the Homebrew cask at the new release, so `brew upgrade --cask buddial` picks it up.
 
-Releases are signed with the local identity in `signing/`, not an Apple Developer ID, so they are not notarized and users click **Open Anyway** once (the README says how). Keep `signing/` backed up: macOS ties users' Microphone and Accessibility grants to that certificate, and a release signed with a different one makes everyone grant them again.
+Releases are signed with the local identity in `signing/`, not an Apple Developer ID, so they are not notarized. The cask removes the quarantine flag after installing, so Homebrew users never see the "Apple could not verify" stop; people who download the zip click **Open Anyway** once (the README says how). Keep `signing/` backed up: macOS ties users' Microphone and Accessibility grants to that certificate, and a release signed with a different one makes everyone grant them again.
+
+Testing a cask change before publishing: install it from a scratch tap (`brew tap-new`) with the `url` pointed at `file://…/dist/BudDial.zip` and `--appdir` set to a scratch folder, check the app has no `com.apple.quarantine` attribute, then delete the scratch folder and `/opt/homebrew/Caskroom/buddial` by hand. `brew uninstall` quits every running copy of BudDial, including your own build. `tap-new` turns on Homebrew's developer mode; turn it off afterwards with `brew developer off`.
 
 ## Data
 
