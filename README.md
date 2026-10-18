@@ -5,7 +5,40 @@
 <p align="center"><b>Type with your voice by holding an AirPod.</b><br>
 A small Mac menu bar app. Your speech becomes text on your Mac; nothing is uploaded.</p>
 
+<p align="center"><a href="https://github.com/teshnizi/BudDial/releases/latest/download/BudDial.zip"><b>Download BudDial</b></a> (3.7 MB) · Apple silicon Mac, macOS 26 or later</p>
+
 <p align="center"><img src="docs/demo.gif" width="560" alt="A finger holds a bud while the words are spoken, a tap sends them, and a silent hold removes the next dictation"></p>
+
+## Install
+
+You need a Mac with Apple silicon on macOS 26 or later, and AirPods with automatic ear detection (tested with AirPods 4).
+
+1. **Download** [BudDial.zip](https://github.com/teshnizi/BudDial/releases/latest/download/BudDial.zip).
+2. **Move it to Applications.** Double-click `BudDial.zip`, then drag **BudDial** into your **Applications** folder.
+3. **Open it the first time** (only once). Open BudDial. macOS says it cannot check it for malware, because BudDial is not notarized by Apple yet. Click **Done**, then:
+   - open **System Settings → Privacy & Security**,
+   - scroll down to *"BudDial" was blocked to protect your Mac*,
+   - click **Open Anyway**, enter your password, and click **Open**.
+4. **Follow the welcome guide.** It asks for two permissions (**Microphone**, to hear you, and **Accessibility**, to type into other apps), lets you pick your AirPods and test a touch, and has you try each gesture once. The speech model, about 550 MB, downloads in the background the first time.
+
+That's it: BudDial lives in your menu bar as a bud with three dots. Settings, Disable and Quit are in its menu.
+
+<details>
+<summary>Build it from source instead</summary>
+
+You need Apple's command line tools (`xcode-select --install`) and [Homebrew](https://brew.sh):
+
+```sh
+brew install whisper-cpp
+git clone https://github.com/teshnizi/BudDial.git
+cd BudDial
+./build.sh
+open ~/Applications/BudDial.app
+```
+
+The first build asks once to trust a signing certificate it creates on your Mac, which keeps BudDial's permissions working each time you rebuild. A copy you build yourself is signed differently from the download, so macOS asks for the permissions again if you switch between them.
+
+</details>
 
 ## How you use it
 
@@ -33,30 +66,6 @@ Start what you say with one of these:
 | "Spotlight Claude Code" | Opens Spotlight and types "Claude Code". Tap to open the result. |
 | "Scratch that" | Removes the last dictation. |
 | "New line" | Adds a line break without sending. |
-
-## Install
-
-**You need** a Mac with Apple silicon running macOS 26 or later, and AirPods with automatic ear detection (tested with AirPods 4).
-
-1. Download **BudDial.zip** from the [latest release](https://github.com/teshnizi/BudDial/releases/latest), open it, and drag **BudDial** into your Applications folder.
-2. Open BudDial. The first time, macOS stops it, because the app is not notarized by Apple yet. Click **Done**, open System Settings → **Privacy & Security**, scroll down to the message that BudDial was blocked, click **Open Anyway** and confirm. You only do this once.
-3. A short welcome guide does the rest: it asks for the microphone and Accessibility permissions (Accessibility is how BudDial types into other apps), lets you pick your AirPods and test a touch, and has you try each gesture once. In the background it downloads the speech model, about 550 MB, once.
-
-After that, BudDial lives in the menu bar: the bud with three dots. Settings, Disable and Quit are in its menu.
-
-### Build it yourself
-
-You need Apple's command line tools (`xcode-select --install`) and [Homebrew](https://brew.sh):
-
-```sh
-brew install whisper-cpp
-git clone https://github.com/teshnizi/BudDial.git
-cd BudDial
-./build.sh
-open ~/Applications/BudDial.app
-```
-
-The first build asks once to trust a signing certificate it creates on your Mac, which keeps BudDial's permissions working each time you rebuild. A copy you build yourself is signed differently from the download, so macOS asks for the permissions again if you switch between them.
 
 ## Getting good results
 
