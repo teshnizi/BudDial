@@ -30,6 +30,15 @@ Quit and reopen the app after a build. The minimum macOS (26) comes from Homebre
 | `./bench.py` | Word error rate and latency for every installed model, beam size, speech detection and vocabulary setting on your own recordings. Record them first: Settings → Diagnostics… → Benchmark…. |
 | `tools/make_icon.sh` | Draws the app icon (`src/AppIcon.icns`, `docs/icon.png`) from the shared mark in `src/BudMark.m`. |
 | `tools/make_demo_gif.sh` | Renders the welcome animation to `docs/demo.gif` (needs `ffmpeg`). |
+| `tools/make_release.sh` | Builds from the committed source, checks the bundle, and packages `dist/BudDial.zip`. |
+
+## Releases
+
+1. Bump `CFBundleShortVersionString` and `CFBundleVersion` in `src/Info.plist` and commit.
+2. `tools/make_release.sh` builds, verifies the signature, refuses to package if the bundle mentions your home folder or Homebrew paths, and writes `dist/BudDial.zip` with `ditto` (which keeps the signatures).
+3. `gh release create v<version> dist/BudDial.zip --title "BudDial <version>" --notes-file <notes>`.
+
+Releases are signed with the local identity in `signing/`, not an Apple Developer ID, so they are not notarized and users click **Open Anyway** once (the README says how). Keep `signing/` backed up: macOS ties users' Microphone and Accessibility grants to that certificate, and a release signed with a different one makes everyone grant them again.
 
 ## Data
 
