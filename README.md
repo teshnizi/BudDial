@@ -15,10 +15,10 @@ You need a Mac with Apple silicon on macOS 26 or later, and AirPods with automat
 
 1. **Download** [BudDial.zip](https://github.com/teshnizi/BudDial/releases/latest/download/BudDial.zip).
 2. **Move it to Applications.** Double-click `BudDial.zip`, then drag **BudDial** into your **Applications** folder.
-3. **Open it the first time** (only once). Open BudDial. macOS says it cannot check it for malware, because BudDial is not notarized by Apple yet. Click **Done**, then:
+3. **Open it the first time** (only once). Open BudDial. macOS shows **"BudDial" Not Opened: Apple could not verify "BudDial" is free of malware**. That is expected: BudDial is not notarized by Apple yet. Click **Done** (not Move to Trash), then:
    - open **System Settings → Privacy & Security**,
    - scroll down to *"BudDial" was blocked to protect your Mac*,
-   - click **Open Anyway**, enter your password, and click **Open**.
+   - click **Open Anyway**, enter your password or use Touch ID, and click **Open**.
 4. **Follow the welcome guide.** It asks for two permissions (**Microphone**, to hear you, and **Accessibility**, to type into other apps), lets you pick your AirPods and test a touch, and has you try each gesture once. The speech model, about 550 MB, downloads in the background the first time.
 
 That's it: BudDial lives in your menu bar as a bud with three dots. Settings, Disable and Quit are in its menu.
