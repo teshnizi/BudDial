@@ -1,127 +1,99 @@
-<p align="center"><img src="docs/icon.png" width="128" alt="BudDial icon: an earbud shaped like a speech bubble"></p>
+<p align="center"><img src="docs/icon.png" width="112" alt=""></p>
 
 <h1 align="center">BudDial</h1>
 
-<p align="center"><b>Type with your voice by holding an AirPod.</b><br>
-A small Mac menu bar app. Your speech becomes text on your Mac; nothing is uploaded.</p>
+<h3 align="center">Prompt Claude Code, Codex and ChatGPT by holding an AirPod.</h3>
 
-<p align="center"><code>brew install --cask teshnizi/tap/buddial</code><br>
-or <a href="https://github.com/teshnizi/BudDial/releases/latest/download/BudDial.zip">download the app</a> (3.7 MB) · Apple silicon Mac, macOS 26 or later</p>
+<p align="center">Hold a bud and talk. Let go, and your prompt is typed. Tap, and it's sent.<br>
+No keyboard, no hotkey, and nothing you say leaves your Mac.</p>
 
-<p align="center"><img src="docs/demo.gif" width="560" alt="A finger holds a bud while the words are spoken, a tap sends them, and a silent hold removes the next dictation"></p>
+<p align="center"><img src="docs/hero.gif" alt="An AirPod is held while a prompt is spoken. On release the prompt is typed into Claude Code in Terminal, and a tap sends it."></p>
 
 ## Install
 
-You need a Mac with Apple silicon on macOS 26 or later, and AirPods with automatic ear detection (tested with AirPods 4).
-
-1. **Install it** with [Homebrew](https://brew.sh):
-
-   ```sh
-   brew install --cask teshnizi/tap/buddial
-   ```
-
-2. **Open BudDial** from your Applications folder.
-3. **Follow the welcome guide.** It asks for two permissions (**Microphone**, to hear you, and **Accessibility**, to type into other apps), lets you pick your AirPods and test a touch, and has you try each gesture once. The speech model, about 550 MB, downloads in the background the first time.
-
-That's it: BudDial lives in your menu bar as a bud with three dots. Settings, Disable and Quit are in its menu. Update it with `brew upgrade --cask buddial`.
-
-BudDial is not notarized by Apple yet. So that it opens without the "Apple could not verify" stop, the Homebrew install removes macOS's downloaded-file flag from BudDial. The [cask](https://github.com/teshnizi/homebrew-tap/blob/main/Casks/buddial.rb) is one short file if you want to see exactly what it does. The download below keeps the flag, and macOS asks you once.
-
-<details>
-<summary>Install without Homebrew</summary>
-
-1. Download [BudDial.zip](https://github.com/teshnizi/BudDial/releases/latest/download/BudDial.zip), double-click it, and drag **BudDial** into your **Applications** folder.
-2. Open BudDial. macOS shows **"BudDial" Not Opened: Apple could not verify "BudDial" is free of malware**. Click **Done** (not Move to Trash), then:
-   - open **System Settings → Privacy & Security**,
-   - scroll down to *"BudDial" was blocked to protect your Mac*,
-   - click **Open Anyway**, enter your password or use Touch ID, and click **Open**.
-3. Follow the welcome guide. You only do step 2 once.
-
-</details>
-
-<details>
-<summary>Build it from source instead</summary>
-
-You need Apple's command line tools (`xcode-select --install`) and [Homebrew](https://brew.sh):
-
 ```sh
-brew install whisper-cpp
-git clone https://github.com/teshnizi/BudDial.git
-cd BudDial
-./build.sh
-open ~/Applications/BudDial.app
+brew install --cask teshnizi/tap/buddial
 ```
 
-The first build asks once to trust a signing certificate it creates on your Mac, which keeps BudDial's permissions working each time you rebuild. A copy you build yourself is signed differently from the download, so macOS asks for the permissions again if you switch between them.
+Then open BudDial from Applications. A short guide asks for microphone and Accessibility access, finds your AirPods, and has you try each gesture once.
 
+Needs a Mac with Apple silicon on macOS 26 or later, and AirPods with automatic ear detection (tested with AirPods 4). No Homebrew? [Download the app](docs/install.md#download-the-app) or [build it yourself](docs/install.md#build-from-source).
+
+## Why BudDial
+
+Prompts are easier to say than to type, but dictation usually keeps you at the keyboard: a hotkey to start, another to stop, Return to send. BudDial puts all of it on the AirPod in your hand, so you can lean back, think out loud, and send.
+
+- **The AirPod is the button.** Cover its ear sensor with a fingertip and BudDial listens. No hotkey, no extra hardware.
+- **Made for prompts.** A tap presses Return. A quiet one-second hold takes back what you just said.
+- **Fast and private.** Whisper turns your speech into text on your Mac, about half a second after you let go.
+- **Learns your words.** Add names like Claude Code or Supabase, and fixes like "cloud code" → "Claude Code".
+- **Works in any app.** It types wherever your cursor is: Claude, Terminal, ChatGPT, Slack, Notes.
+
+## Using it
+
+Take one AirPod out and hold it like a button. Keep the other one in if you like.
+
+| Gesture | What happens |
+|---|---|
+| **Hold and talk** | When you let go, what you said is typed at your cursor. |
+| **Tap** | Presses Return to send it. |
+| **Hold for a second, silently** | Removes the last thing you said. Again for the one before. |
+
+While you hold the bud, a pill at the bottom of the screen shows what letting go will do. Talk toward your Mac: its microphone does the listening, and the AirPod is only the button.
+
+You can also say **"Scratch that"** to remove the last dictation, **"New line"** for a line break, or **"Spotlight"** and a name to search for it ("Spotlight Notion", then tap to open).
+
+## Questions
+
+<details>
+<summary><b>Why does the Mac listen instead of the AirPod?</b></summary>
+<br>
+Using AirPods as a microphone switches them to phone-call sound quality while they listen. The Mac's own microphone avoids that and is always ready, so your first word isn't cut off.
 </details>
 
-## How you use it
+<details>
+<summary><b>Do I have to take an AirPod out?</b></summary>
+<br>
+Yes. While both AirPods are in your ears, BudDial leaves them alone, so music and calls work as usual. Take one out to use it as the button.
+</details>
 
-Take one AirPod out of your ear and hold it like a button.
+<details>
+<summary><b>Which AirPods work?</b></summary>
+<br>
+AirPods with automatic ear detection should work. BudDial is tested with AirPods 4.
+</details>
 
-| Do this | What happens |
-|---|---|
-| **Cover the sensor and talk** | When you let go, what you said is typed where your cursor is, in any app. |
-| **Tap** | Presses Return, so a chat message gets sent. |
-| **Cover it for a second without talking** | Removes what you just dictated. Do it again to remove the one before. |
+<details>
+<summary><b>Does anything leave my Mac?</b></summary>
+<br>
+No. Speech becomes text on your Mac with <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a>. The only download is the speech model, about 550 MB, once, from Hugging Face. Audio stays in memory and is dropped unless you are holding a bud. To spell names right, BudDial gives the speech model up to 300 characters before your cursor; turn that off in Settings (<b>Use text before the cursor</b>). The event log records timings, never your words.
+</details>
 
-While you hold the bud, a small pill at the bottom of the screen tells you what letting go will do: **Release to send**, **Listening**, or **Release to undo**.
+<details>
+<summary><b>It got a word wrong.</b></summary>
+<br>
+Add the word to Settings → Speech → <b>Vocabulary</b> (about 20 words works best), or teach it a fix in <b>Replacements</b>. A quieter room or sitting a little closer helps more than any setting. More tips in <a href="docs/troubleshooting.md">troubleshooting</a>.
+</details>
 
-Two things to know:
+<details>
+<summary><b>Is it notarized by Apple?</b></summary>
+<br>
+Not yet. So that BudDial opens without macOS's "Apple could not verify" message, the Homebrew install removes the quarantine flag macOS puts on downloaded apps. The <a href="https://github.com/teshnizi/homebrew-tap/blob/main/Casks/buddial.rb">cask</a> is one short file. If you <a href="docs/install.md#download-the-app">download the app</a> instead, macOS asks you once to allow it.
+</details>
 
-- **Talk toward your Mac.** The AirPod is only the button; the Mac's own microphone does the listening, so speak as you would to the screen.
-- **Keep wearing the other bud if you like.** While *both* AirPods are in your ears, BudDial leaves them alone, so music and calls work as usual.
-
-### Voice commands
-
-Start what you say with one of these:
-
-| Say | What happens |
-|---|---|
-| "Spotlight Claude Code" | Opens Spotlight and types "Claude Code". Tap to open the result. |
-| "Scratch that" | Removes the last dictation. |
-| "New line" | Adds a line break without sending. |
-
-## Getting good results
-
-- **Teach it your words.** Settings → Speech → **Vocabulary**: names and terms you say, like `Claude Code, Codex, GitHub`. About 20 words works best; a long list dilutes the hint.
-- **Fix words it still gets wrong.** Settings → Speech → **Replacements**: "cloud coat" → "Claude Code". The corrected spelling is also added to the vocabulary.
-- **Mind the room.** Your voice only has to beat the background noise at the Mac's microphone. A quieter room or sitting a little closer helps more than any setting.
-- **Short taps count.** A tap is any short touch. The AirPod needs a brief moment to notice your finger, so a feather-light flick may not register.
-
-## Troubleshooting
-
-| Problem | What to check |
-|---|---|
-| Nothing happens when I touch the bud | Is at least one AirPod out of your ear, and are they connected to this Mac? Is BudDial enabled in its menu? Settings shows a live dot that turns green when you cover the sensor. |
-| The pill says "Nothing to undo" | Undo removes what BudDial typed since your last Return. It also stops if you typed or clicked since, because the cursor may have moved. |
-| Undo doesn't work in a loud room | Background noise can sound like speech. Say "Scratch that" instead. |
-| Text is copied but not typed | Allow Accessibility for BudDial in System Settings → Privacy & Security. |
-| The orange microphone dot is always on | That is **Instant start**: BudDial keeps the last few seconds of audio in memory so your first words are not cut off. Turn it off in Settings if you prefer. |
-| Wrong words | Add them to Vocabulary or Replacements (see above). |
-
-## Privacy
-
-- Speech is turned into text on your Mac by [whisper.cpp](https://github.com/ggml-org/whisper.cpp). Nothing is sent anywhere.
-- The microphone audio stays in memory and is discarded unless you are holding a bud.
-- To spell names right, BudDial reads up to 300 characters before your cursor and gives them to the speech model on your Mac. You can turn this off in Settings (**Use text before the cursor**).
-- The event log records timings, never what you said.
-- The only network access is the one-time download of the speech model from Hugging Face.
+<details>
+<summary><b>Something isn't working, or I want to uninstall.</b></summary>
+<br>
+See <a href="docs/troubleshooting.md">troubleshooting</a> and <a href="docs/install.md#uninstall">uninstalling</a>.
+</details>
 
 ## How it works
 
-AirPods tell macOS when they go in or out of an ear. BudDial watches that signal for your AirPods, so a fingertip on the sensor of a bud in your hand looks like "in ear": that is the button. The length of the touch and whether you spoke decide the gesture. The Mac's microphone records, including the moment just before your touch, and a speech engine kept running on your Mac types the result about half a second after you let go.
-
-The details, measurements and known limits are in [docs/how-it-works.md](docs/how-it-works.md).
-
-## Uninstall
-
-With Homebrew: quit BudDial from its menu and run `brew uninstall --zap --cask buddial` (`--zap` also deletes its settings and speech model). Otherwise, quit it, delete BudDial from Applications and the folder `~/Library/Application Support/BudDial`. Either way, remove BudDial from System Settings → Privacy & Security → Microphone and Accessibility.
+AirPods tell macOS when they go in or out of an ear. BudDial watches that signal, so a fingertip on the sensor of a bud in your hand looks like "in ear": that is the button. How long you touch and whether you speak decide the gesture. The Mac's microphone records, including the moment just before your touch, and a speech engine running on your Mac types the result. Details, measurements and known limits: [docs/how-it-works.md](docs/how-it-works.md).
 
 ## Development
 
-How the build works, test hooks, the benchmark and the source layout: [docs/development.md](docs/development.md).
+Building, test hooks, the benchmark and releases: [docs/development.md](docs/development.md).
 
 ## License
 

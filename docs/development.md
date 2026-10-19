@@ -29,7 +29,7 @@ Quit and reopen the app after a build. The minimum macOS (26) comes from Homebre
 | `tools/eval_speech_detection.sh` | Replays the benchmark takes mixed with noise, distant talkers and the start cue, and prints how often each speech detector misreads taps, silent holds and speech. |
 | `./bench.py` | Word error rate and latency for every installed model, beam size, speech detection and vocabulary setting on your own recordings. Record them first: Settings → Diagnostics… → Benchmark…. |
 | `tools/make_icon.sh` | Draws the app icon (`src/AppIcon.icns`, `docs/icon.png`) from the shared mark in `src/BudMark.m`. |
-| `tools/make_demo_gif.sh` | Renders the welcome animation to `docs/demo.gif` (needs `ffmpeg`). |
+| `tools/make_hero_gif.sh` | Renders `tools/hero.html` (the README's animation; open it in a browser to watch it) to `docs/hero.gif` with WebKit, through `tools/render_hero.m`. Needs `ffmpeg`. |
 | `tools/make_release.sh` | Builds from the committed source, checks the bundle, and packages `dist/BudDial.zip`. |
 | `tools/publish_cask.sh` | Writes the Homebrew cask for `dist/BudDial.zip` to [teshnizi/homebrew-tap](https://github.com/teshnizi/homebrew-tap) (`--print` only prints it). |
 

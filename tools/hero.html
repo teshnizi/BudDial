@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BudDial hero</title>
+<!--
+  The README's hero animation (docs/hero.gif). tools/make_hero_gif.sh renders it frame by frame through
+  render(seconds); nothing here animates on its own, so every frame is exact. Open the file in a browser
+  to watch it play.
+
+  Times follow the real app, from events.log: the blue "Release to send" hint shows as soon as the bud
+  is touched, "Listening" once 0.3 s of speech is heard, and the text is pasted about 0.45 s after release.
+  The pill copies src/Overlay.m: 36 pt tall, 13 pt semibold label, five bars shaped .55 .85 1 .8 .5.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1200px; height: 675px; overflow: hidden; }
+  body {
+    position: relative;
+    font-family: -apple-system, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(90% 80% at 8% 0%, rgba(132, 156, 255, .55) 0%, rgba(132, 156, 255, 0) 60%),
+      linear-gradient(135deg, #4157dc 0%, #5a46d2 52%, #7a3dc2 100%);
+  }
+
+  /* The three steps, top center. */
+  #steps { position: absolute; top: 26px; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 14px; }
+  .step { display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 20px 0 8px; border-radius: 21px; font-size: 19px; font-weight: 600; letter-spacing: -.1px; }
+  .step .n { width: 28px; height: 28px; border-radius: 14px; display: grid; place-items: center; font-size: 15px; font-weight: 700; color: #fff; }
+  .chev { color: rgba(255, 255, 255, .45); font-size: 22px; font-weight: 500; }
+
+  #bud { position: absolute; left: 30px; top: 118px; }
+
+  /* A Terminal window running Claude Code. */
+  #term { position: absolute; left: 360px; top: 96px; width: 820px; height: 352px; border-radius: 16px; overflow: hidden;
+          background: #1c1d20; box-shadow: 0 30px 70px rgba(18, 8, 60, .5), 0 0 0 1px rgba(255, 255, 255, .10); }
+  .titlebar { position: relative; height: 40px; display: flex; align-items: center; padding: 0 16px; gap: 8px; }
+  .titlebar i { width: 12px; height: 12px; border-radius: 6px; display: block; }
+  .titlebar b { position: absolute; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: 600; color: #8b8d93; }
+  .screen { padding: 8px 24px; font: 17px/26px ui-monospace, "SF Mono", Menlo, monospace; color: #e4e5e8; }
+  .dim { color: #8b8d93; }
+  .gap { height: 14px; }
+  .rule { height: 1px; background: #4a4c52; margin: 12px 0; }
+  .prompt { white-space: pre-wrap; padding-left: 2ch; text-indent: -2ch; }
+  #sent { color: #b9bbc1; background: rgba(255, 255, 255, .07); border-radius: 4px; padding-top: 2px; padding-bottom: 2px; }
+  #spin { margin-top: 14px; }
+  #spin .g, #spin .word { color: #d97757; }
+  #cursor { display: inline-block; width: 11px; height: 21px; background: #e4e5e8; vertical-align: -4px; }
+
+  /* What is being said, word by word, under the terminal. */
+  #caption { position: absolute; left: 384px; width: 772px; top: 470px; font-size: 23px; line-height: 32px;
+             font-weight: 500; color: #fff; text-shadow: 0 1px 12px rgba(20, 8, 70, .45); }
+
+  /* BudDial's pill, at its real size times 1.35 so it reads in the README. Centered under the terminal. */
+  #pill { position: absolute; left: 770px; bottom: 28px; height: 36px; display: flex; align-items: center; padding: 0 16px 0 15px;
+          border-radius: 18px; background: rgba(20, 20, 20, .88); border: 1px solid rgba(255, 255, 255, .14);
+          box-shadow: 0 10px 28px rgba(10, 4, 40, .35); transform-origin: 50% 100%; white-space: nowrap; }
+  #pill .dot { width: 10px; height: 10px; border-radius: 5px; margin-right: 8px; }
+  #pill .label { font-size: 13px; font-weight: 600; color: #fff; }
+  #pill .bars { display: flex; align-items: center; gap: 3px; width: 27px; height: 18px; margin-left: 10px; }
+  #pill .bars span { width: 3px; border-radius: 1.5px; background: rgba(255, 255, 255, .9); }
+</style>
+</head>
+<body>
+  <div id="steps">
+    <div class="step" id="s0"><span class="n">1</span>Hold and talk</div>
+    <span class="chev">›</span>
+    <div class="step" id="s1"><span class="n">2</span>Let go: it's typed</div>
+    <span class="chev">›</span>
+    <div class="step" id="s2"><span class="n">3</span>Tap: it's sent</div>
+  </div>
+
+  <svg id="bud" width="312" height="520" viewBox="0 0 300 500" aria-hidden="true">
+    <defs>
+      <radialGradient id="headFill" cx="36%" cy="28%" r="78%">
+        <stop offset="0" stop-color="#ffffff"/>
+        <stop offset=".48" stop-color="#f4f5f8"/>
+        <stop offset=".82" stop-color="#dde0e7"/>
+        <stop offset="1" stop-color="#c4c9d3"/>
+      </radialGradient>
+      <linearGradient id="stemFill" x1="0" x2="1">
+        <stop offset="0" stop-color="#c7ccd6"/>
+        <stop offset=".34" stop-color="#ffffff"/>
+        <stop offset=".72" stop-color="#eceef2"/>
+        <stop offset="1" stop-color="#bfc4ce"/>
+      </linearGradient>
+      <linearGradient id="capFill" x1="0" x2="1">
+        <stop offset="0" stop-color="#9ea4ae"/>
+        <stop offset=".4" stop-color="#d9dce1"/>
+        <stop offset="1" stop-color="#959ba6"/>
+      </linearGradient>
+      <linearGradient id="neckShade" x1="0" y1="40" x2="0" y2="110" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#1a1d2b" stop-opacity=".22"/>
+        <stop offset="1" stop-color="#1a1d2b" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="stemClip"><rect x="-30" y="0" width="60" height="285" rx="30"/></clipPath>
+      <filter id="shadow" x="-40%" y="-20%" width="180%" height="150%">
+        <feDropShadow dx="0" dy="22" stdDeviation="18" flood-color="#140844" flood-opacity=".42"/>
+      </filter>
+    </defs>
+    <g filter="url(#shadow)">
+      <g transform="translate(176 150) rotate(-7)">
+        <rect x="-30" y="0" width="60" height="285" rx="30" fill="url(#stemFill)"/>
+        <g clip-path="url(#stemClip)">
+          <rect x="-30" y="0" width="60" height="110" fill="url(#neckShade)"/>
+          <rect x="-30" y="260" width="60" height="30" fill="url(#capFill)"/>
+        </g>
+      </g>
+      <ellipse cx="138" cy="128" rx="104" ry="94" transform="rotate(-14 138 128)" fill="url(#headFill)"/>
+      <ellipse cx="80" cy="156" rx="21" ry="10" transform="rotate(-42 80 156)" fill="#33363d"/>
+    </g>
+    <!-- The fingertip on the ear sensor. -->
+    <g transform="translate(112 86)">
+      <circle id="pulse" r="34" fill="none" stroke-width="3"/>
+      <circle id="pad" r="34" stroke-width="4"/>
+    </g>
+  </svg>
+
+  <div id="term">
+    <div class="titlebar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><b>claude</b></div>
+    <div class="screen">
+      <div><span class="dim">app %</span> claude</div>
+      <div class="gap"></div>
+      <div id="sent" class="prompt"></div>
+      <div id="spin"><span class="g"></span> <span class="word">Thinking…</span> <span class="dim">(esc to interrupt)</span></div>
+      <div class="rule"></div>
+      <div class="prompt">&gt; <span id="typed"></span><span id="cursor"></span></div>
+      <div class="rule"></div>
+      <div class="dim">&nbsp;&nbsp;? for shortcuts</div>
+    </div>
+  </div>
+
+  <div id="caption"></div>
+
+  <div id="pill"><span class="dot"></span><span class="label"></span><span class="bars"><span></span><span></span><span></span><span></span><span></span></span></div>
+
+<script>
+const PROMPT = "Add a dark mode toggle to the settings page, and write tests for it.";
+// Seconds into the loop.
+const T = { touch: .9, speech: 1.15, speechEnd: 5.75, release: 6.1, paste: 6.55, tap: 8.0, tapUp: 8.25, fade: 11.6, loop: 12.3 };
+const RED = "#ff3b30", BLUE = "#0a84ff", GREEN = "#30c75e";
+const STEP_COLORS = [RED, GREEN, BLUE];
+const SPINNER = ["·", "✢", "✳", "✶", "✻", "✽", "✻", "✶", "✳", "✢"];
+const SHAPE = [.55, .85, 1, .8, .5];
+const $ = id => document.getElementById(id);
+
+const clamp01 = x => x < 0 ? 0 : x > 1 ? 1 : x;
+const ease = x => { x = clamp01(x); return x * x * (3 - 2 * x); };
+// 1 inside [a, b), easing in and out over `edge` seconds.
+const window01 = (t, a, b, edge = .18) => ease((t - a) / edge) * (1 - ease((t - b) / edge));
+const mix = (a, b, k) => a + (b - a) * k;
+const rand = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); };
+
+// When each word is said: longer words take longer, with a breath after the comma.
+const WORDS = PROMPT.split(" ");
+const BREATH = .3, BREATH_AFTER = WORDS.findIndex(w => w.endsWith(","));
+const WORD_AT = (() => {
+  const weights = WORDS.map(w => .16 + .05 * w.length);
+  const scale = (T.speechEnd - T.speech - BREATH) / weights.reduce((a, b) => a + b, 0);
+  let at = T.speech;
+  return weights.map((w, i) => { const start = at; at += w * scale + (i === BREATH_AFTER ? BREATH : 0); return start; });
+})();
+const PAUSE = [WORD_AT[BREATH_AFTER + 1] - BREATH, WORD_AT[BREATH_AFTER + 1]];
+$("caption").innerHTML = WORDS.map((w, i) => `<span>${i === 0 ? "“" : ""}${w}${i === WORDS.length - 1 ? "”" : ""}</span>`).join(" ");
+
+function speechHeard(t) {
+  const end = Math.min(t, T.speechEnd);
+  let heard = Math.max(0, end - T.speech);
+  if (end > PAUSE[0]) heard -= Math.min(end, PAUSE[1]) - PAUSE[0];
+  return heard;
+}
+
+// Loudness as BudDial's meter reports it: about ten updates a second.
+function level(t) {
+  const slot = Math.floor(t * 10);
+  const q = slot / 10;
+  if (q < T.speech || q >= T.speechEnd || (q >= PAUSE[0] && q < PAUSE[1])) return .05;
+  return .38 + .62 * rand(slot);
+}
+
+function setPill(text, color, bars, alpha, t) {
+  const pill = $("pill");
+  pill.style.opacity = alpha;
+  if (alpha <= 0) return;
+  pill.querySelector(".label").textContent = text;
+  pill.querySelector(".dot").style.background = color;
+  const lv = level(t);
+  pill.querySelectorAll(".bars span").forEach((bar, i) => {
+    bar.style.height = Math.max(3, 18 * Math.min(1, lv * SHAPE[i] * 1.15)) + "px";
+  });
+  pill.querySelector(".bars").style.display = bars ? "flex" : "none";
+  pill.style.transform = `translateX(-50%) scale(1.35)`;
+}
+
+function render(t) {
+  t = ((t % T.loop) + T.loop) % T.loop;
+
+  // Steps: which one is happening now.
+  const active = [window01(t, T.touch, T.release), window01(t, T.release, T.tap), window01(t, T.tap, T.fade)];
+  active.forEach((a, i) => {
+    const step = $("s" + i);
+    step.style.background = `rgba(255,255,255,${mix(.14, 1, a)})`;
+    step.style.color = a > .5 ? "#1d1d1f" : `rgba(255,255,255,${mix(.8, 1, a)})`;
+    const n = step.querySelector(".n");
+    n.style.background = a > .02 ? STEP_COLORS[i] : "rgba(255,255,255,.22)";
+    n.style.opacity = a > .02 ? mix(.6, 1, a) : 1;
+  });
+
+  // The touch: blue until speech is heard, red while listening, a blue flash for the tap.
+  const holding = t >= T.touch && t < T.release, tapping = t >= T.tap && t < T.tapUp;
+  const listening = holding && speechHeard(t) >= .3;
+  let ringAlpha = 0, ringScale = 1, ringColor = BLUE;
+  if (t >= T.touch && t < T.release + .15) {
+    ringColor = listening || t >= T.release ? RED : BLUE;
+    ringAlpha = t < T.release ? 1 : 1 - (t - T.release) / .15;
+    ringScale = t < T.release ? mix(.72, 1, ease((t - T.touch) / .12)) : mix(1, 1.12, (t - T.release) / .15);
+  } else if (t >= T.tap && t < T.tapUp + .15) {
+    ringAlpha = t < T.tapUp ? 1 : 1 - (t - T.tapUp) / .15;
+    ringScale = t < T.tapUp ? mix(.72, 1, ease((t - T.tap) / .1)) : mix(1, 1.12, (t - T.tapUp) / .15);
+  }
+  const pad = $("pad"), pulse = $("pulse");
+  pad.setAttribute("fill", ringColor);
+  pad.setAttribute("fill-opacity", .24);
+  pad.setAttribute("stroke", ringColor);
+  pad.setAttribute("opacity", ringAlpha);
+  pad.setAttribute("transform", `scale(${ringScale})`);
+  const phase = listening ? ((t - T.speech) % 1.1) / 1.1 : 0;
+  pulse.setAttribute("stroke", RED);
+  pulse.setAttribute("r", mix(34, 60, phase));
+  pulse.setAttribute("opacity", listening ? .6 * (1 - phase) : 0);
+
+  // The pill: shown at once, faded out over .2 s.
+  if (holding) setPill(listening ? "Listening" : "Release to send ↵", listening ? RED : BLUE, true, 1, t);
+  else if (t >= T.release && t < T.release + .2) setPill("Listening", RED, true, 1 - (t - T.release) / .2, T.release - .05);
+  else if (tapping) setPill("Release to send ↵", BLUE, true, 1, t);
+  else if (t >= T.tapUp && t < T.tapUp + .2) setPill("Release to send ↵", BLUE, true, 1 - (t - T.tapUp) / .2, T.tapUp - .05);
+  else setPill("", BLUE, false, 0, t);
+
+  // Caption: each word as it is said, gone as the same words land in the prompt.
+  const captionAlpha = 1 - ease((t - T.paste) / .3);
+  $("caption").querySelectorAll("span").forEach((span, i) => {
+    span.style.opacity = t < T.paste + .3 ? ease((t - WORD_AT[i]) / .12) * captionAlpha : 0;
+  });
+
+  // Terminal: pasted at once, sent by the tap's Return.
+  const pasted = t >= T.paste && t < T.tapUp, sent = t >= T.tapUp;
+  $("typed").textContent = pasted ? PROMPT : "";
+  const blinkOn = Math.floor(t / .53) % 2 === 0;
+  $("cursor").style.visibility = pasted || blinkOn ? "visible" : "hidden";
+  const fadeOut = 1 - ease((t - T.fade) / .4);
+  $("sent").style.display = $("spin").style.display = sent ? "block" : "none";
+  $("sent").textContent = "> " + PROMPT;
+  $("sent").style.opacity = $("spin").style.opacity = fadeOut;
+  $("spin").querySelector(".g").textContent = SPINNER[Math.floor((t - T.tapUp) / .12) % SPINNER.length] || SPINNER[0];
+}
+
+if (location.search.includes("frames")) {
+  render(0);
+} else {
+  const start = performance.now();
+  (function tick() { render((performance.now() - start) / 1000); requestAnimationFrame(tick); })();
+}
+</script>
+</body>
+</html>
