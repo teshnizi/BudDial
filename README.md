@@ -37,7 +37,7 @@ Take one AirPod out and hold it like a button. Keep the other one in if you like
 |---|---|
 | **Hold and talk** | When you let go, what you said is typed at your cursor. |
 | **Tap** | Presses Return to send it. |
-| **Hold for a second, silently** | Removes the last thing you said. Again for the one before. |
+| **Hold for a second, silently** | Removes the last thing you said. Again for the one before. After 4 seconds it just keeps listening, so pausing to think never deletes anything. |
 
 While you hold the bud, a pill at the bottom of the screen shows what letting go will do. Talk toward your Mac: its microphone does the listening, and the AirPod is only the button.
 

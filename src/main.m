@@ -19,8 +19,8 @@
 
 static double now(void) { return NSProcessInfo.processInfo.systemUptime; }
 // Touch rules, shared by the live hint and the decision on release. Shorter than the hold time a
-// touch is a tap; up to kQuickTouchSeconds with no speech it is still a tap; longer with no speech
-// it is a silent hold. "No speech" is under kSpeechSeconds above the take's noise floor, start cue
+// touch is a tap; up to kQuickTouchSeconds with no speech it is still a tap; longer with no speech,
+// up to kSilentHoldMaxSeconds, it is a silent hold. "No speech" is under kSpeechSeconds above the take's noise floor, start cue
 // excluded. 0.08 s: on the 2026-10-15 takes mixed with noise, no silent hold or tap failed in a
 // -43 dBFS room, 7.6% of silent holds (no taps) at -38, and no sentence was missed (tools/eval_speech_detection.c).
 static const double kQuickTouchSeconds = .95, kSpeechSeconds = .08;
@@ -29,6 +29,11 @@ static const double kQuickTouchSeconds = .95, kSpeechSeconds = .08;
 // The user's shortest real replies ("Send it.", "Yes, go ahead.") measured 0.22 to 0.24 s and are
 // recognized, so they still paste.
 static const double kQuietSpeechSeconds = .3;
+// A silent hold undoes only while it is shorter than this. A longer one is someone thinking before
+// they talk (5 of the first 52 silent-hold undos came from holds of 4 s or more), so it just keeps
+// listening: words paste, no words do nothing.
+static const double kSilentHoldMaxSeconds = 4;
+static BOOL silentHoldUndoes(double heldSeconds) { return heldSeconds >= kQuickTouchSeconds && heldSeconds < kSilentHoldMaxSeconds; }
 typedef NS_ENUM(NSInteger, APHint) { APHintNone, APHintSend, APHintListen, APHintUndo, APHintNothingToUndo };
 static void (^eventSink)(NSString *);
 static NSString *support(void) {
@@ -383,7 +388,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     if (self.benchmark.recording) next = APHintListen;
     else if ((held < gesture.holdSeconds || (quiet && held < kQuickTouchSeconds)) && [[self settingValue:@"tapToSend"] boolValue]) next = APHintSend;
     // A silent hold with nothing to remove says so, rather than looking like it is listening.
-    else if (quiet && held >= kQuickTouchSeconds && [[self settingValue:@"silentHoldDeletes"] boolValue]) next = [self whyNothingToDelete] ? APHintNothingToUndo : APHintUndo;
+    else if (quiet && silentHoldUndoes(held) && [[self settingValue:@"silentHoldDeletes"] boolValue]) next = [self whyNothingToDelete] ? APHintNothingToUndo : APHintUndo;
     if (next == hint) return;
     hint = next;
     if (next == APHintSend) [self.overlay showHint:@"Release to send ↵" color:NSColor.systemBlueColor];
@@ -526,10 +531,11 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
         record([NSString stringWithFormat:@"Take %.2f s from %@ (pre-roll %.0f ms%@, speech %.2f s%@; context: %@).", take.seconds, take.microphone,
                 take.preRollMs, take.firstAudioMs >= 0 && take.preRollMs == 0 ? [NSString stringWithFormat:@", mic start %.0f ms", take.firstAudioMs] : @"", take.speechSeconds, lead, contextSummary]);
         // No speech: a short touch is a tap (two quick taps also arrive as one such touch: the bud
-        // never reports the gap between them); a longer one is a silent hold. Silent holds measured
-        // under 0.08 s of speech once the start cue is excluded.
+        // never reports the gap between them); a longer one is a silent hold, up to kSilentHoldMaxSeconds.
+        // Silent holds measured under 0.08 s of speech once the start cue is excluded.
         if (take.speechSeconds < kSpeechSeconds) {
-            if (heldMs >= kQuickTouchSeconds * 1000 && ![[strong settingValue:@"silentHoldDeletes"] boolValue]) { [strong takeFailed:@"No speech heard"]; return; }
+            BOOL undoes = silentHoldUndoes(heldMs / 1000) && [[strong settingValue:@"silentHoldDeletes"] boolValue];
+            if (heldMs >= kQuickTouchSeconds * 1000 && !undoes) { [strong takeFailed:@"No speech heard"]; return; }
             if (strong->inFlight) strong->inFlight--;
             if (heldMs < kQuickTouchSeconds * 1000) [strong tapToSend:heldMs];
             else [strong deleteLastDictation:[NSString stringWithFormat:@"Silent hold (%.0f ms)", heldMs]];
@@ -554,8 +560,8 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
                 [strong tapToSend:heldMs];
                 return;
             }
-            // Likewise a long, quiet touch with no words was a silent hold: undo.
-            if (error && heldMs >= kQuickTouchSeconds * 1000 && take.speechSeconds < kQuietSpeechSeconds && [error isEqual:@"No speech recognized"]
+            // Likewise a quiet silent hold with no words: undo.
+            if (error && silentHoldUndoes(heldMs / 1000) && take.speechSeconds < kQuietSpeechSeconds && [error isEqual:@"No speech recognized"]
                 && [[strong settingValue:@"silentHoldDeletes"] boolValue]) {
                 if (strong->inFlight) strong->inFlight--;
                 [strong deleteLastDictation:[NSString stringWithFormat:@"Silent hold (%.0f ms, no words)", heldMs]];
