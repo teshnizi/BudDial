@@ -27,6 +27,30 @@
 @property NSUInteger generation;
 @end
 
+// The pill goes on the screen the text goes to: the one holding the front app's frontmost window.
+// Not the mouse's screen: dictating leaves the mouse wherever it was, often on another display.
+static NSScreen *APScreenOfFrontWindow(void) {
+    pid_t front = NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier;
+    NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID));
+    CGFloat primaryTop = NSMaxY(NSScreen.screens.firstObject.frame);   // window bounds count down from here
+    for (NSDictionary *window in windows) {   // front to back
+        if ([window[(id)kCGWindowOwnerPID] intValue] != front || [window[(id)kCGWindowLayer] intValue] != 0) continue;
+        if ([window[(id)kCGWindowAlpha] doubleValue] <= 0) continue;
+        CGRect bounds;
+        if (!CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)window[(id)kCGWindowBounds], &bounds)) continue;
+        if (bounds.size.width < 100 || bounds.size.height < 60) continue;   // title strips and helper windows
+        NSRect rect = NSMakeRect(bounds.origin.x, primaryTop - CGRectGetMaxY(bounds), bounds.size.width, bounds.size.height);
+        NSScreen *best = nil;
+        CGFloat bestArea = 0;
+        for (NSScreen *candidate in NSScreen.screens) {
+            NSRect overlap = NSIntersectionRect(rect, candidate.frame);
+            if (NSWidth(overlap) * NSHeight(overlap) > bestArea) { bestArea = NSWidth(overlap) * NSHeight(overlap); best = candidate; }
+        }
+        if (best) return best;
+    }
+    return NSScreen.mainScreen;
+}
+
 @implementation APOverlay
 - (BOOL)canBecomeKeyWindow { return NO; }
 - (BOOL)canBecomeMainWindow { return NO; }
@@ -72,9 +96,7 @@
     self.label.frame = NSMakeRect(x, (36 - NSHeight(self.label.frame)) / 2, labelWidth, NSHeight(self.label.frame));
     CGFloat width = x + labelWidth + (bars ? (text.length ? 10 : 0) + 27 : 0) + 16;
     self.bars.frame = NSMakeRect(x + labelWidth + (text.length ? 10 : 0), 9, 27, 18);
-    NSPoint mouse = NSEvent.mouseLocation;
-    NSScreen *screen = NSScreen.mainScreen;
-    for (NSScreen *candidate in NSScreen.screens) if (NSPointInRect(mouse, candidate.frame)) { screen = candidate; break; }
+    NSScreen *screen = APScreenOfFrontWindow();
     NSRect visible = screen.visibleFrame;
     [self setFrame:NSMakeRect(round(NSMidX(visible) - width / 2), NSMinY(visible) + 28, width, 36) display:YES];
     [self orderFrontRegardless];
