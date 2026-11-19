@@ -9,6 +9,7 @@
 #import "DebugClips.h"
 #import "Feedback.h"
 #import "Gesture.h"
+#import "KeyTrigger.h"
 #import "ModelStore.h"
 #import "MonitorPanel.h"
 #import "OnboardingWindow.h"
@@ -93,6 +94,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 @interface BudDialApp : NSObject <NSApplicationDelegate, APOnboardingHost> {
     APGesture gesture;
     BOOL desiredEnabled, committed, pendingEnter, pendingDelete, bluetoothConnected, checkingConnection, sensorCovered;
+    BOOL keyDown, touchByKey;   // the keyboard key is held; the current touch came from it
     NSUInteger sensorChanges, inFlight;
     double lastTouchMs, preRollMs, releaseToTextMs, transcriptionMs, recordedSeconds, speechSeconds, levelDb, lastSnapshot, lastConnectionCheck;
     pid_t lastInsertPID;
@@ -110,6 +112,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 @property APModelStore *models;
 @property APBenchmarkPanel *benchmark;
 @property APBudSensor *sensor;
+@property APKeyTrigger *keyTrigger;
 @property APRecorder *recorder;
 @property APTranscriber *transcriber;
 @property APFeedback *feedback;
@@ -183,6 +186,10 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     [self downloadModelIfMissing];
 
     [self startSensor];
+    self.keyTrigger = [APKeyTrigger new];
+    self.keyTrigger.onChange = ^(BOOL down) { [weakSelf keyChanged:down]; };
+    self.keyTrigger.onShortcut = ^{ [weakSelf keyUsedInShortcut]; };
+    self.keyTrigger.key = [self settingValue:@"keyTrigger"];
     self.settings = [[APSettingsWindow alloc] initWithHost:self modelsDirectory:[support() stringByAppendingPathComponent:@"models"] version:[self version]];
     self.benchmark = [[APBenchmarkPanel alloc] initWithDirectory:[support() stringByAppendingPathComponent:@"bench"]];
 
@@ -229,7 +236,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
             }];
         }
         if (!AXIsProcessTrusted()) AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)@{(__bridge NSString *)kAXTrustedCheckOptionPrompt: @YES});
-        if (![[self settingValue:@"bluetoothAddress"] length]) [self.settings present];
+        if (![[self settingValue:@"bluetoothAddress"] length] && ![self keyConfigured]) [self.settings present];
     }
     if ([[self settingValue:@"showMonitorOnLaunch"] boolValue]) [self.monitor orderFrontRegardless];
     record([NSString stringWithFormat:@"Started v%@. Hold %.2f s, pre-roll %.2f s, mic %@, model %@, language %@, cues %@.", [self version], gesture.holdSeconds,
@@ -243,7 +250,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
              @"language":@"en", @"cueOutput":@"speakers", @"showMonitorOnLaunch":@NO,
              // Speech detection cut quiet speech in noise: +11 to +25 points WER on the 2026-10-15 benchmark.
              @"vocabulary":@"", @"useContext":@YES, @"vad":@NO, @"beamSize":@5,
-             @"voiceCommands":@YES, @"replacements":@[]};
+             @"voiceCommands":@YES, @"replacements":@[], @"keyTrigger":@"off"};
 }
 - (id)settingValue:(NSString *)key { return self.config[key] ?: BudDialApp.defaults[key]; }
 - (double)number:(NSString *)key { return [[self settingValue:key] doubleValue]; }
@@ -301,20 +308,41 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 #pragma mark Sensor and gestures
 
 - (BOOL)microphoneAllowed { return [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio] == AVAuthorizationStatusAuthorized; }
-- (BOOL)enabled { return desiredEnabled && [self microphoneAllowed] && !self.sensor.worn; }
+- (BOOL)keyConfigured { return APKeyTriggerTitle([self settingValue:@"keyTrigger"]) != nil; }
+// Worn AirPods switch off the bud, not the keyboard key.
+- (BOOL)enabled { return desiredEnabled && [self microphoneAllowed] && (touchByKey || !self.sensor.worn); }
 - (void)sensorChanged:(BOOL)covered source:(NSString *)source {
-    if ([source isEqual:@"startup"]) { APObserve(&gesture, NO, now()); sensorCovered = NO; [self updateStatus]; return; }
+    if ([source isEqual:@"startup"]) { APObserve(&gesture, keyDown, now()); sensorCovered = NO; [self updateStatus]; return; }
     sensorChanges++;
     self.sourceText = source;
     sensorCovered = covered;
-    if (!covered && gesture.tracking) lastTouchMs = (now() - gesture.pressedAt) * 1000;
+    if (!covered && !keyDown && gesture.tracking) lastTouchMs = (now() - gesture.pressedAt) * 1000;
     NSString *delivery = self.sensor.lastDeliveryMs >= 0 ? [NSString stringWithFormat:@", log→app %.0f ms", self.sensor.lastDeliveryMs] : @"";
     record([NSString stringWithFormat:@"Sensor %@ (%@%@)%@.", covered ? @"covered" : @"uncovered", source, delivery,
-            !covered && lastTouchMs >= 0 ? [NSString stringWithFormat:@"; touch %.0f ms", lastTouchMs] : @""]);
-    [self handle:APObserve(&gesture, covered, now())];
+            !covered && !keyDown && lastTouchMs >= 0 ? [NSString stringWithFormat:@"; touch %.0f ms", lastTouchMs] : @""]);
+    // The bud and the key are one button: the touch lasts while either is held.
+    [self handle:APObserve(&gesture, covered || keyDown, now())];
+}
+- (void)keyChanged:(BOOL)down {
+    keyDown = down;
+    BOOL ends = !down && !sensorCovered && gesture.tracking;
+    if (ends) lastTouchMs = (now() - gesture.pressedAt) * 1000;
+    record([NSString stringWithFormat:@"Key %@ %@%@.", APKeyTriggerTitle(self.keyTrigger.key), down ? @"down" : @"up",
+            ends ? [NSString stringWithFormat:@"; touch %.0f ms", lastTouchMs] : @""]);
+    [self handle:APObserve(&gesture, sensorCovered || down, now())];
+}
+// Another key pressed with the trigger (Option+E for é, Command+C): a shortcut, so the touch is dropped.
+- (void)keyUsedInShortcut {
+    if (!gesture.tracking || !touchByKey) return;
+    [self resetGesture];
+    [self.overlay hide];
+    record([NSString stringWithFormat:@"%@ used in a shortcut: touch discarded.", APKeyTriggerTitle(self.keyTrigger.key)]);
+    [self updateStatus];
 }
 - (void)wornChanged:(BOOL)worn {
-    if (worn) {
+    if (worn && gesture.tracking && touchByKey) {
+        record(@"Both buds in ear: AirPods are being worn, sensor ignored until they come out. The key's touch goes on.");
+    } else if (worn) {
         BOOL active = gesture.tracking;
         [self resetGesture];
         if (active) [self.overlay hide];
@@ -336,6 +364,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     switch (action) {
         case APNone: break;
         case APBeginTouch:
+            touchByKey = keyDown;
             if (![self enabled]) { [self.overlay flash:[self controlState] tone:APOverlayToneError]; break; }
             // Recording starts here (pre-roll included); the hold threshold only separates taps.
             [self.recorder beginAt:now()];
@@ -368,14 +397,21 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 }
 - (void)tick:(NSTimer *)timer {
     (void)timer;
+    [self.keyTrigger poll];
     APAction action = APTick(&gesture, now());
     if (action == APStopDictation) {
-        // Nobody dictates for this long: the bud went into an ear. Discard, never paste.
+        // Nobody dictates for this long: the bud went into an ear, or something is resting on the key. Discard, never paste.
+        BOOL byKey = touchByKey;
         [self resetGesture];
-        [self.sensor markCoveredBudsWorn];
         [self.feedback play:APCueError];
-        [self.overlay flash:[NSString stringWithFormat:@"Over %.0f s: discarded (bud treated as worn)", gesture.maximumHoldSeconds] tone:APOverlayToneError];
-        record(@"Hold exceeded the maximum: recording discarded; that bud is treated as worn until it leaves the ear.");
+        if (byKey) {
+            [self.overlay flash:[NSString stringWithFormat:@"Over %.0f s: discarded", gesture.maximumHoldSeconds] tone:APOverlayToneError];
+            record(@"Key held over the maximum: recording discarded.");
+        } else {
+            [self.sensor markCoveredBudsWorn];
+            [self.overlay flash:[NSString stringWithFormat:@"Over %.0f s: discarded (bud treated as worn)", gesture.maximumHoldSeconds] tone:APOverlayToneError];
+            record(@"Hold exceeded the maximum: recording discarded; that bud is treated as worn until it leaves the ear.");
+        }
     } else [self handle:action];
     if (gesture.tracking) { [self updateHint]; [self updateStatus]; }
 }
@@ -797,10 +833,12 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
 
 - (NSString *)controlState {
     if (!desiredEnabled) return @"Disabled";
-    if (![[self settingValue:@"bluetoothAddress"] length]) return @"Choose your AirPods in Settings";
+    // With a keyboard key set, missing or worn AirPods are no problem: the key still works.
+    BOOL key = [self keyConfigured];
+    if (!key && ![[self settingValue:@"bluetoothAddress"] length]) return @"Choose your AirPods in Settings";
     if (![self microphoneAllowed]) return @"Allow microphone access";
-    if (!bluetoothConnected) return @"AirPods not connected";
-    if (self.sensor.worn) return @"AirPods worn — sensor ignored";
+    if (!key && !bluetoothConnected) return @"AirPods not connected";
+    if (!key && self.sensor.worn) return @"AirPods worn: sensor ignored";
     if (gesture.tracking && [self enabled]) return @"Listening — release to insert";
     if (inFlight) return @"Transcribing…";
     if (self.models.downloadingFile && self.models.totalBytes > 0)
@@ -814,7 +852,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     NSString *state = [self controlState];
     self.statusLine.title = state;
     self.toggleItem.title = desiredEnabled ? @"Disable" : @"Enable";
-    BOOL attention = !desiredEnabled || ![self microphoneAllowed] || !AXIsProcessTrusted() || ![[self settingValue:@"bluetoothAddress"] length];
+    BOOL attention = !desiredEnabled || ![self microphoneAllowed] || !AXIsProcessTrusted() || (![[self settingValue:@"bluetoothAddress"] length] && ![self keyConfigured]);
     BOOL recording = gesture.tracking && [self enabled];
     // The BudDial mark, red while recording; the waveform while text is being transcribed.
     static NSImage *mark;
@@ -829,6 +867,7 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     NSDictionary *snapshot = @{
         @"updatedAt":@([NSDate.date timeIntervalSince1970]),
         @"sensor":self.sensor.worn ? @"worn" : sensorCovered ? @"covered" : @"uncovered",
+        @"keyTrigger":[self settingValue:@"keyTrigger"], @"keyDown":@(keyDown),
         @"source":self.sourceText ?: @"None", @"rawSensorStates":self.sensor.rawStates ?: @"", @"sensorChanges":@(sensorChanges),
         @"observationAgeMs":@(age), @"action":state,
         @"holdingMs":@(gesture.tracking ? (t - gesture.pressedAt) * 1000 : 0), @"holdThresholdMs":@(gesture.holdSeconds * 1000),
@@ -905,14 +944,19 @@ static BOOL echoesPrompt(NSString *text, NSString *prompt) {
     else if ([key isEqual:@"vad"]) { self.transcriber.useVAD = [value boolValue]; [self.transcriber restart]; }
     else if ([key isEqual:@"beamSize"]) { self.transcriber.beamSize = [value integerValue]; [self.transcriber restart]; }
     else if ([key isEqual:@"cueOutput"]) self.feedback.mode = value;
+    else if ([key isEqual:@"keyTrigger"]) {
+        if (gesture.tracking && touchByKey) { [self resetGesture]; [self.overlay hide]; }
+        keyDown = NO;
+        self.keyTrigger.key = value;
+    }
     if (![key isEqual:@"holdSeconds"]) record([NSString stringWithFormat:@"Setting %@ → %@.", key, value]);
     [self updateStatus];
 }
 - (NSDictionary *)liveStatus {
     BOOL recording = gesture.tracking && [self enabled];
-    BOOL attention = !desiredEnabled || ![self microphoneAllowed] || !AXIsProcessTrusted() || !bluetoothConnected || !self.transcriber.ready;
+    BOOL attention = !desiredEnabled || ![self microphoneAllowed] || !AXIsProcessTrusted() || (!bluetoothConnected && ![self keyConfigured]) || !self.transcriber.ready;
     return @{@"state":[self controlState], @"tone":@(recording ? 1 : attention ? 2 : 0),
-             @"sensor":self.sensor.worn ? @"worn" : sensorCovered ? @"covered" : @"uncovered",
+             @"sensor":self.sensor.worn ? @"worn" : sensorCovered ? @"covered" : @"uncovered", @"keyDown":@(keyDown),
              @"connected":@(bluetoothConnected), @"microphoneAllowed":@([self microphoneAllowed]), @"accessibilityAllowed":@(AXIsProcessTrusted()),
              @"engineReady":@(self.transcriber.ready), @"modelInstalled":@([self.models isInstalled:self.transcriber.modelFile]),
              @"modelDownloading":@(self.models.downloadingFile != nil), @"modelReceived":@(self.models.receivedBytes),

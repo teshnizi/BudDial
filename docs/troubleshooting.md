@@ -3,6 +3,7 @@
 | Problem | What to check |
 |---|---|
 | Nothing happens when I touch the bud | Is at least one AirPod out of your ear, and are they connected to this Mac? Is BudDial enabled in its menu? Settings shows a live dot that turns green when you cover the sensor. |
+| Nothing happens when I hold the keyboard key | Is it chosen in Settings → Keyboard key, and is it the right-hand one? BudDial needs Accessibility to see keys. A key pressed with another key or modifier is a shortcut and does nothing in BudDial. |
 | A quick tap doesn't register | The AirPod needs a brief moment to notice your finger, so a feather-light flick may be missed. Rest your fingertip on the sensor for a beat. |
 | The pill says "Nothing to undo" | Undo removes what BudDial typed since your last Return. It also stops if you typed or clicked since, because the cursor may have moved. |
 | Undo doesn't work in a loud room | Background noise can sound like speech. Say "Scratch that" instead. |

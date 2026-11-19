@@ -39,6 +39,14 @@ Both buds in ear means the AirPods are worn: any take in progress is discarded, 
 
 Stem presses reach the Mac only from a bud that is in an ear (as AVRCP play and pause, also delivered to the music app), and press-and-hold switches noise control. From a bud in the hand nothing arrives, so BudDial does not use the stem.
 
+### Keyboard key
+
+Settings → Keyboard key makes a right-hand modifier key (Option, Command, Shift or Control) a second button. Modifier keys type nothing when held alone, and macOS reports the right-hand ones apart from their left twins (the device-dependent bits of the modifier flags). The key and the bud are one button: a touch lasts while either is held, and every gesture and timing above applies.
+
+- The key works while the AirPods are worn: wearing them switches off only the bud. A key held over 90 s is discarded without marking any bud worn.
+- Another key pressed while it is held (a key, or another modifier, its left twin included) makes it a shortcut: the touch is dropped and nothing is typed or sent. Pressed while another modifier is already down, it is ignored until released.
+- Detection: key events (an NSEvent monitor, which needs the Accessibility permission BudDial already has to paste) for exact timing, and a check of the keyboard's modifier state every 50 ms. The check catches presses and releases the events miss, such as while a password field has focus and macOS hides key events from other apps, after two disagreeing reads (50 to 100 ms late). It also catches keys typed during the hold. It reads the keyboard only, so BudDial's own ⌘V and Return never count.
+
 ## Audio
 
 - The Mac's built-in microphone is used, not the AirPod's: a bud out of the ear has no audio route, and opening its mic needs a Bluetooth profile switch of about 1.5 s.

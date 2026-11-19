@@ -1,4 +1,5 @@
 #import "SettingsWindow.h"
+#import "KeyTrigger.h"
 #import "ReplacementsSheet.h"
 #import "Transcriber.h"
 #import <AVFoundation/AVFoundation.h>
@@ -67,7 +68,7 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
 @property NSSwitch *contextSwitch, *commandsSwitch;
 @property NSButton *replacementsButton;
 @property APReplacementsSheet *replacementsSheet;
-@property NSPopUpButton *devicePopup, *microphonePopup, *modelPopup, *languagePopup, *soundPopup;
+@property NSPopUpButton *devicePopup, *keyPopup, *microphonePopup, *modelPopup, *languagePopup, *soundPopup;
 @end
 
 @implementation APSettingsWindow
@@ -97,12 +98,13 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
     [self add:[self header]];
     [self buildControls];
     [self add:self.banner];
-    [self add:[self section:@"AirPods" rows:@[
-        [self row:@"Device" detail:stack(@[self.sensorDot, self.sensorLabel], NSUserInterfaceLayoutOrientationHorizontal, 5) control:self.devicePopup]]]];
+    [self add:[self section:@"Push to talk" rows:@[
+        [self row:@"AirPods" detail:stack(@[self.sensorDot, self.sensorLabel], NSUserInterfaceLayoutOrientationHorizontal, 5) control:self.devicePopup],
+        [self row:@"Keyboard key" caption:@"Hold it like the bud: talk, tap to send. Works while you wear both AirPods." control:self.keyPopup]]]];
     [self add:[self section:@"Dictation" rows:@[
         [self row:@"Hold before dictating" caption:@"Shorter touches count as taps." control:stack(@[self.holdSlider, self.holdValue], NSUserInterfaceLayoutOrientationHorizontal, 10)],
-        [self row:@"Tap to send" caption:@"A quick tap on the bud presses Return." control:self.sendSwitch],
-        [self row:@"Silent hold deletes" caption:@"Cover the bud for a second without talking to remove the last dictation." control:self.deleteSwitch],
+        [self row:@"Tap to send" caption:@"A quick tap on the bud or key presses Return." control:self.sendSwitch],
+        [self row:@"Silent hold deletes" caption:@"Hold the bud or key for a second without talking to remove the last dictation." control:self.deleteSwitch],
         [self row:@"Microphone" caption:nil control:self.microphonePopup],
         [self row:@"Instant start" caption:@"Keeps the mic open so your first words aren't cut off. Audio stays in memory." control:self.instantSwitch]]]];
     [self add:[self section:@"Speech" rows:@[
@@ -270,6 +272,11 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
 }
 - (void)buildControls {
     self.devicePopup = [self popup:@selector(deviceChanged:)];
+    self.keyPopup = [self popup:@selector(keyChanged:)];
+    for (NSArray<NSString *> *choice in APKeyTriggerChoices()) {
+        [self.keyPopup addItemWithTitle:choice[1]];
+        self.keyPopup.lastItem.representedObject = choice[0];
+    }
     self.sensorDot = label(@"○", 12, NSFontWeightRegular, NSColor.tertiaryLabelColor);
     self.sensorLabel = label(@"Waiting for AirPods", 12, NSFontWeightRegular, NSColor.secondaryLabelColor);
     self.holdSlider = [NSSlider sliderWithValue:.55 minValue:.3 maxValue:1 target:self action:@selector(holdChanged:)];
@@ -395,6 +402,7 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
     [self select:self.languagePopup value:[self.host settingValue:@"language"]];
     [self updateLanguageAvailability];
     [self select:self.soundPopup value:[self.host settingValue:@"cueOutput"]];
+    [self select:self.keyPopup value:[self.host settingValue:@"keyTrigger"]];
     double hold = [[self.host settingValue:@"holdSeconds"] doubleValue];
     self.holdSlider.doubleValue = hold;
     self.holdValue.stringValue = [NSString stringWithFormat:@"%.2f s", hold];
@@ -478,6 +486,7 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
     [self.host setSettingValue:@(hold) forKey:@"holdSeconds"];
 }
 - (void)sendChanged:(NSSwitch *)sender { [self.host setSettingValue:@(sender.state == NSControlStateValueOn) forKey:@"tapToSend"]; }
+- (void)keyChanged:(NSPopUpButton *)sender { [self.host setSettingValue:sender.selectedItem.representedObject forKey:@"keyTrigger"]; }
 - (void)deleteChanged:(NSSwitch *)sender { [self.host setSettingValue:@(sender.state == NSControlStateValueOn) forKey:@"silentHoldDeletes"]; }
 - (void)microphoneChanged:(NSPopUpButton *)sender { [self.host setSettingValue:sender.selectedItem.representedObject forKey:@"microphone"]; }
 - (void)instantChanged:(NSSwitch *)sender { [self.host setSettingValue:@(sender.state == NSControlStateValueOn) forKey:@"instantStart"]; }

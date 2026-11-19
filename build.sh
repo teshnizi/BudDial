@@ -159,6 +159,8 @@ clang -isysroot "$sdk_dir" -fobjc-arc -Wall -Wextra -framework Foundation "$src/
 "$work/debug-test"
 clang -isysroot "$sdk_dir" -fobjc-arc -Wall -Wextra -Werror -framework Foundation "$src/commands_test.m" "$src/Commands.m" -o "$work/commands-test"
 "$work/commands-test"
+clang -isysroot "$sdk_dir" -fobjc-arc -Wall -Wextra -Werror -framework AppKit "$src/key_trigger_test.m" "$src/KeyTrigger.m" -o "$work/key-trigger-test"
+"$work/key-trigger-test"
 
 stage="$work/BudDial.app"
 mkdir -p "$stage/Contents/MacOS" "$stage/Contents/Resources"
@@ -170,7 +172,7 @@ clang -isysroot "$sdk_dir" -mmacosx-version-min=26.0 -fobjc-arc -O2 -Wall -Wextr
     -framework IOBluetooth -framework QuartzCore -framework ServiceManagement \
     "$src/main.m" "$src/BudSensor.m" "$src/Recorder.m" "$src/Transcriber.m" "$src/Feedback.m" "$src/Overlay.m" \
     "$src/SettingsWindow.m" "$src/BenchmarkPanel.m" "$src/MonitorPanel.m" "$src/DebugClips.m" "$src/ModelStore.m" "$src/OnboardingWindow.m" "$src/GestureStage.m" \
-    "$src/Commands.m" "$src/ReplacementsSheet.m" "$src/BudMark.m" \
+    "$src/Commands.m" "$src/KeyTrigger.m" "$src/ReplacementsSheet.m" "$src/BudMark.m" \
     -o "$stage/Contents/MacOS/BudDial"
 bundle_engine
 

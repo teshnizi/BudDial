@@ -17,7 +17,7 @@ brew install --cask teshnizi/tap/buddial
 
 Then open BudDial from Applications. A short guide asks for microphone and Accessibility access, finds your AirPods, and has you try each gesture once.
 
-Needs a Mac with Apple silicon on macOS 26 or later, and AirPods with automatic ear detection (tested with AirPods 4). No Homebrew? [Download the app](docs/install.md#download-the-app) or [build it yourself](docs/install.md#build-from-source).
+Needs a Mac with Apple silicon on macOS 26 or later, and AirPods with automatic ear detection (tested with AirPods 4) or a [keyboard key](#no-airpods-use-a-key) instead. No Homebrew? [Download the app](docs/install.md#download-the-app) or [build it yourself](docs/install.md#build-from-source).
 
 ## Why BudDial
 
@@ -41,6 +41,10 @@ Take one AirPod out and hold it like a button. Keep the other one in if you like
 
 While you hold the bud, a pill at the bottom of the screen shows what letting go will do. Talk toward your Mac: its microphone does the listening, and the AirPod is only the button.
 
+### No AirPods? Use a key
+
+Settings → **Keyboard key** turns Right Option, Right Command, Right Shift or Right Control into the button. Hold it and talk, tap it to send, hold it silently to undo, exactly like the bud. It works while you wear both AirPods, and alongside the bud. Shortcuts with that key (Option+E, Command+C) work as usual and never dictate or send.
+
 You can also say **"Scratch that"** to remove the last dictation, **"New line"** for a line break, or **"Spotlight"** and a name to search for it ("Spotlight Notion", then tap to open).
 
 ## Questions
@@ -54,13 +58,13 @@ Using AirPods as a microphone switches them to phone-call sound quality while th
 <details>
 <summary><b>Do I have to take an AirPod out?</b></summary>
 <br>
-Yes. While both AirPods are in your ears, BudDial leaves them alone, so music and calls work as usual. Take one out to use it as the button.
+Yes, to use it as the button: while both AirPods are in your ears, BudDial leaves them alone, so music and calls work as usual. To dictate with both in, use a [keyboard key](#no-airpods-use-a-key).
 </details>
 
 <details>
 <summary><b>Which AirPods work?</b></summary>
 <br>
-AirPods with automatic ear detection should work. BudDial is tested with AirPods 4.
+AirPods with automatic ear detection should work. BudDial is tested with AirPods 4. Without AirPods, use a [keyboard key](#no-airpods-use-a-key).
 </details>
 
 <details>

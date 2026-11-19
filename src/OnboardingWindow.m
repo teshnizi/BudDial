@@ -1,5 +1,6 @@
 #import "OnboardingWindow.h"
 #import "GestureStage.h"
+#import "KeyTrigger.h"
 #import <AVFoundation/AVFoundation.h>
 #import <IOBluetooth/IOBluetooth.h>
 #import <ServiceManagement/ServiceManagement.h>
@@ -81,7 +82,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
 @property NSView *micDone, *accessibilityDone;
 @property NSTextField *accessibilityHint;
 @property BOOL askedAccessibility;
-@property NSPopUpButton *devicePopup;
+@property NSPopUpButton *devicePopup, *keyPopup;
 @property NSBox *touchCircle;
 @property NSImageView *touchHand;
 @property NSTextField *touchStatus;
@@ -314,6 +315,21 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     NSStackView *words = stack(@[label(@"Try a touch", 13, NSFontWeightSemibold, NSColor.labelColor), self.touchStatus], NSUserInterfaceLayoutOrientationVertical, 2);
     NSStackView *touch = stack(@[self.touchCircle, words], NSUserInterfaceLayoutOrientationHorizontal, 14);
     [self add:[self panel:@[touch]] to:page];
+
+    // No AirPods, or rather use a key: a right-hand modifier key does the same.
+    self.keyPopup = [NSPopUpButton new];
+    self.keyPopup.target = self;
+    self.keyPopup.action = @selector(keyChosen:);
+    for (NSArray<NSString *> *choice in APKeyTriggerChoices()) {
+        [self.keyPopup addItemWithTitle:choice[1]];
+        self.keyPopup.lastItem.representedObject = choice[0];
+    }
+    for (NSMenuItem *item in self.keyPopup.itemArray)
+        if ([item.representedObject isEqual:[self.host settingValue:@"keyTrigger"]]) [self.keyPopup selectItem:item];
+    NSTextField *keyWords = label(@"Or hold a keyboard key", 13, NSFontWeightSemibold, NSColor.labelColor);
+    NSView *spacer = [NSView new];
+    [spacer setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [self add:[self panel:@[stack(@[keyWords, spacer, self.keyPopup], NSUserInterfaceLayoutOrientationHorizontal, 10)]] to:page];
     return page;
 }
 - (NSView *)practicePage {
@@ -387,7 +403,7 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
 
     NSMutableArray<NSImageView *> *checks = [NSMutableArray array];
     NSStackView *steps = stack(@[], NSUserInterfaceLayoutOrientationVertical, 8);
-    for (NSString *text in @[@"Hold a bud, say something, let go.", @"Tap the bud to send it.", @"Say something else, then hold silently for a second to undo it."]) {
+    for (NSString *text in @[@"Hold the bud or key, say something, let go.", @"Tap it to send.", @"Say something else, then hold it silently for a second to undo it."]) {
         NSImageView *check = symbol(@"circle", 14, NSColor.tertiaryLabelColor);
         [checks addObject:check];
         [steps addArrangedSubview:stack(@[check, label(text, 13, NSFontWeightRegular, NSColor.labelColor)], NSUserInterfaceLayoutOrientationHorizontal, 8)];
@@ -478,17 +494,21 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     self.accessibilityHint.hidden = accessibility || !self.askedAccessibility;
 
     NSString *address = [self.host settingValue:@"bluetoothAddress"];
-    [self refreshTouch:status address:address];
+    NSString *key = APKeyTriggerTitle([self.host settingValue:@"keyTrigger"]);
+    [self refreshTouch:status address:address key:key];
     [self refreshDownload:status];
 
-    self.nextButton.enabled = self.step == kPermissions ? microphone && accessibility : self.step == kAirPods ? address.length > 0 : YES;
+    self.nextButton.enabled = self.step == kPermissions ? microphone && accessibility : self.step == kAirPods ? address.length > 0 || key != nil : YES;
 }
-- (void)refreshTouch:(NSDictionary *)status address:(NSString *)address {
+- (void)refreshTouch:(NSDictionary *)status address:(NSString *)address key:(NSString *)key {
     NSString *sensor = status[@"sensor"];
-    BOOL covered = [sensor isEqual:@"covered"] && [status[@"connected"] boolValue];
+    BOOL pressed = [status[@"keyDown"] boolValue];
+    BOOL covered = ([sensor isEqual:@"covered"] && [status[@"connected"] boolValue]) || pressed;
     if (covered) self.touched = YES;
     NSString *text;
-    if (!address.length) text = @"Choose your AirPods above.";
+    if (pressed) text = [NSString stringWithFormat:@"Got it. BudDial feels %@.", key];
+    else if (!address.length) text = !key ? @"Choose your AirPods above, or a keyboard key below."
+                                    : self.touched ? @"That works. Continue when you're ready." : [NSString stringWithFormat:@"Press %@ to try it.", key];
     else if (![status[@"connected"] boolValue]) text = @"Not connected yet. Connect them to this Mac from Control Center, then try again.";
     else if ([sensor isEqual:@"worn"]) text = @"Both buds are in your ears. Take one out.";
     else if (covered) text = @"Got it. BudDial can feel your touch.";
@@ -595,5 +615,9 @@ static NSString *megabytes(long long bytes) { return [NSString stringWithFormat:
     if (!address) return;
     if (![address isEqual:[self.host settingValue:@"bluetoothAddress"]]) self.touched = NO;
     [self.host setSettingValue:address forKey:@"bluetoothAddress"];
+}
+- (void)keyChosen:(NSPopUpButton *)sender {
+    [self.host setSettingValue:sender.selectedItem.representedObject forKey:@"keyTrigger"];
+    [self refresh];
 }
 @end

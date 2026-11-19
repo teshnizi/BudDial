@@ -1,6 +1,6 @@
 # Installing BudDial
 
-You need a Mac with Apple silicon on macOS 26 or later, and AirPods with automatic ear detection (tested with AirPods 4).
+You need a Mac with Apple silicon on macOS 26 or later, and AirPods with automatic ear detection (tested with AirPods 4) or a keyboard key instead (Settings → Keyboard key, or the welcome guide's AirPods step).
 
 ## Homebrew
 

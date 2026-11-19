@@ -9,7 +9,7 @@ brew install whisper-cpp
 
 `build.sh`:
 
-1. runs the unit checks (`src/gesture_test.c`, `src/debug_clips_test.m`, `src/commands_test.m`);
+1. runs the unit checks (`src/gesture_test.c`, `src/debug_clips_test.m`, `src/commands_test.m`, `src/key_trigger_test.m`);
 2. compiles the app against the macOS SDK (the 26.5 Command Line Tools SDK when present: the 27.0 one ships broken `.tbd` stubs);
 3. copies Homebrew's `whisper-server`, its libraries and ggml's backends into the bundle and rewrites their load paths, so the app runs without Homebrew;
 4. signs everything with a local self-signed identity kept in `signing/` (created on the first run; macOS asks once to trust it). macOS ties the Microphone and Accessibility grants to that certificate, so rebuilds keep them;
@@ -55,6 +55,7 @@ Everything BudDial writes is in `~/Library/Application Support/BudDial`: `config
 | `src/main.m` | App controller: gestures to actions, transcription, pasting, undo, voice commands, settings storage, menu |
 | `src/Gesture.h` | Touch state machine (tap, hold, glitch, timeout) |
 | `src/BudSensor.m` | Reads bluetoothd's log for the chosen AirPods' in-ear changes |
+| `src/KeyTrigger.m` | The keyboard key: a right-hand modifier held as a second button |
 | `src/Recorder.m` | Always-open microphone ring, pre-roll, speech measure (start cue excluded) |
 | `src/Transcriber.m` | Runs and talks to the bundled `whisper-server` |
 | `src/ModelStore.m` | Downloads and verifies speech models |
