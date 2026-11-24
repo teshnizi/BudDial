@@ -56,6 +56,8 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
 @property(weak) id<APSettingsHost> host;
 @property NSString *modelsDirectory;
 @property NSStackView *page;
+@property NSSegmentedControl *tabs;
+@property NSArray<NSView *> *panes;   // one per tab; only the selected one is shown
 @property NSTimer *timer;
 @property NSTextField *statusDot, *statusLabel, *sensorDot, *sensorLabel, *holdValue;
 @property NSBox *banner;
@@ -98,27 +100,37 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
     [self add:[self header]];
     [self buildControls];
     [self add:self.banner];
-    [self add:[self section:@"Push to talk" rows:@[
-        [self row:@"AirPods" detail:stack(@[self.sensorDot, self.sensorLabel], NSUserInterfaceLayoutOrientationHorizontal, 5) control:self.devicePopup],
-        [self row:@"Keyboard key" caption:@"Hold it like the bud: talk, tap to send. Works while you wear both AirPods." control:self.keyPopup]]]];
-    [self add:[self section:@"Dictation" rows:@[
-        [self row:@"Hold before dictating" caption:@"Shorter touches count as taps." control:stack(@[self.holdSlider, self.holdValue], NSUserInterfaceLayoutOrientationHorizontal, 10)],
-        [self row:@"Tap to send" caption:@"A quick tap on the bud or key presses Return." control:self.sendSwitch],
-        [self row:@"Silent hold deletes" caption:@"Hold the bud or key for a second without talking to remove the last dictation." control:self.deleteSwitch],
-        [self row:@"Microphone" caption:nil control:self.microphonePopup],
-        [self row:@"Instant start" caption:@"Keeps the mic open so your first words aren't cut off. Audio stays in memory." control:self.instantSwitch]]]];
-    [self add:[self section:@"Speech" rows:@[
-        [self row:@"Model" caption:@"Runs on this Mac." control:self.modelPopup],
-        [self row:@"Language" caption:nil control:self.languagePopup],
-        [self row:@"Vocabulary" caption:@"Names and terms you say, comma-separated." control:self.vocabularyField],
-        [self row:@"Replacements" caption:@"Fix words it keeps getting wrong, like “clawed code” to “Claude Code”." control:self.replacementsButton],
-        [self row:@"Voice commands" caption:@"Start with “Spotlight” to search. Say “scratch that” to undo, “new line” for a line break." control:self.commandsSwitch],
-        [self row:@"Use text before the cursor" caption:@"Helps spelling and style. Read on this Mac, never sent anywhere." control:self.contextSwitch]]]];
     NSButton *test = [NSButton buttonWithTitle:@"Test" target:self action:@selector(testSound:)];
     test.controlSize = NSControlSizeSmall;
-    [self add:[self section:@"General" rows:@[
-        [self row:@"Sounds" caption:nil control:stack(@[test, self.soundPopup], NSUserInterfaceLayoutOrientationHorizontal, 8)],
-        [self row:@"Launch at login" caption:nil control:self.loginSwitch]]]];
+    // One tab at a time keeps the window shorter than a laptop screen; all of it was taller.
+    self.panes = @[
+        [self pane:@[
+            [self section:@"Push to talk" rows:@[
+                [self row:@"AirPods" detail:stack(@[self.sensorDot, self.sensorLabel], NSUserInterfaceLayoutOrientationHorizontal, 5) control:self.devicePopup],
+                [self row:@"Keyboard key" caption:@"Hold it like the bud: talk, tap to send. Works while you wear both AirPods." control:self.keyPopup]]],
+            [self section:@"Gestures" rows:@[
+                [self row:@"Hold before dictating" caption:@"Shorter touches count as taps." control:stack(@[self.holdSlider, self.holdValue], NSUserInterfaceLayoutOrientationHorizontal, 10)],
+                [self row:@"Tap to send" caption:@"A quick tap on the bud or key presses Return." control:self.sendSwitch],
+                [self row:@"Silent hold deletes" caption:@"Hold the bud or key for a second without talking to remove the last dictation." control:self.deleteSwitch]]]]],
+        [self pane:@[[self section:nil rows:@[
+            [self row:@"Microphone" caption:nil control:self.microphonePopup],
+            [self row:@"Instant start" caption:@"Keeps the mic open, so the orange dot stays on, and your first words aren't cut off. Audio stays in memory." control:self.instantSwitch],
+            [self row:@"Model" caption:@"Runs on this Mac." control:self.modelPopup],
+            [self row:@"Language" caption:nil control:self.languagePopup]]]]],
+        [self pane:@[[self section:nil rows:@[
+            [self row:@"Vocabulary" caption:@"Names and terms you say, comma-separated." control:self.vocabularyField],
+            [self row:@"Replacements" caption:@"Fix words it keeps getting wrong, like “clawed code” to “Claude Code”." control:self.replacementsButton],
+            [self row:@"Voice commands" caption:@"Start with “Spotlight” to search. Say “scratch that” to undo, “new line” for a line break." control:self.commandsSwitch],
+            [self row:@"Use text before the cursor" caption:@"Helps spelling and style. Read on this Mac, never sent anywhere." control:self.contextSwitch]]]]],
+        [self pane:@[[self section:nil rows:@[
+            [self row:@"Sounds" caption:nil control:stack(@[test, self.soundPopup], NSUserInterfaceLayoutOrientationHorizontal, 8)],
+            [self row:@"Launch at login" caption:nil control:self.loginSwitch]]]]]];
+    self.tabs = [NSSegmentedControl segmentedControlWithLabels:@[@"Controls", @"Speech", @"Words", @"General"]
+                                                 trackingMode:NSSegmentSwitchTrackingSelectOne target:self action:@selector(tabChanged:)];
+    self.tabs.segmentDistribution = NSSegmentDistributionFillEqually;
+    self.tabs.selectedSegment = 0;
+    [self add:self.tabs];
+    for (NSView *pane in self.panes) { [self add:pane]; pane.hidden = pane != self.panes.firstObject; }
     [self add:[self footer:version]];
     [self fitContent];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(reloadDevices) name:NSPopUpButtonWillPopUpNotification object:self.devicePopup];
@@ -128,13 +140,25 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
     [self.page addArrangedSubview:view];
     [view.widthAnchor constraintEqualToConstant:kWidth - 2 * kInset].active = YES;
 }
-// Sizes the window to its content, keeping the top edge where it is.
+// Sizes the window to its content, keeping the top edge where it is unless that would push the
+// bottom off the screen.
 - (void)fitContent {
     [self.contentView layoutSubtreeIfNeeded];
     NSSize size = self.page.fittingSize;
     NSRect frame = [self frameRectForContentRect:NSMakeRect(0, 0, size.width, size.height)];
     frame.origin = NSMakePoint(NSMinX(self.frame), NSMaxY(self.frame) - NSHeight(frame));
+    NSRect visible = (self.screen ?: NSScreen.mainScreen).visibleFrame;
+    if (NSMinY(frame) < NSMinY(visible)) frame.origin.y = MIN(NSMinY(visible), NSMaxY(visible) - NSHeight(frame));
     [self setFrame:frame display:YES animate:self.visible];
+}
+- (void)tabChanged:(NSSegmentedControl *)sender {
+    [self.panes enumerateObjectsUsingBlock:^(NSView *pane, NSUInteger index, BOOL *stop) { (void)stop; pane.hidden = (NSInteger)index != sender.selectedSegment; }];
+    [self fitContent];
+}
+- (NSView *)pane:(NSArray<NSView *> *)sections {
+    NSStackView *pane = stack(sections, NSUserInterfaceLayoutOrientationVertical, 16);
+    for (NSView *section in sections) [section.widthAnchor constraintEqualToAnchor:pane.widthAnchor].active = YES;
+    return pane;
 }
 
 #pragma mark Layout
@@ -164,12 +188,9 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
         [identity.bottomAnchor constraintEqualToAnchor:top.bottomAnchor],
         [self.enabledSwitch.trailingAnchor constraintEqualToAnchor:top.trailingAnchor],
         [self.enabledSwitch.centerYAnchor constraintEqualToAnchor:top.centerYAnchor]]];
-    NSTextField *hint = caption(@"Cover an AirPod and talk  ·  release to paste  ·  tap for Return  ·  hold silently to undo", kWidth - 2 * kInset);
-    hint.font = [NSFont systemFontOfSize:12];
-    NSStackView *header = stack(@[top, hint], NSUserInterfaceLayoutOrientationVertical, 12);
-    [top.widthAnchor constraintEqualToAnchor:header.widthAnchor].active = YES;
-    return header;
+    return top;
 }
+// A rounded box of rows, under a title unless the title is nil (the tab names it).
 - (NSView *)section:(NSString *)title rows:(NSArray<NSView *> *)rows {
     NSBox *box = [NSBox new];
     box.boxType = NSBoxCustom;
@@ -207,12 +228,15 @@ static NSArray<NSArray<NSString *> *> *languages(void) {
         [list addArrangedSubview:row];
         [row.widthAnchor constraintEqualToAnchor:list.widthAnchor].active = YES;
     }];
+    if (!title) return box;
     NSStackView *section = stack(@[label(title, 13, NSFontWeightSemibold, NSColor.labelColor), box], NSUserInterfaceLayoutOrientationVertical, 8);
     [box.widthAnchor constraintEqualToAnchor:section.widthAnchor].active = YES;
     return section;
 }
 - (NSView *)row:(NSString *)title caption:(NSString *)text control:(NSView *)control {
-    return [self row:title detail:text ? caption(text, 250) : nil control:control];
+    // The caption wraps in the room the control leaves: row insets 14 + 14, gap 16.
+    CGFloat room = kWidth - 2 * kInset - 28 - 16 - control.fittingSize.width;
+    return [self row:title detail:text ? caption(text, MIN(250, room)) : nil control:control];
 }
 - (NSView *)row:(NSString *)title detail:(NSView *)detail control:(NSView *)control {
     NSView *row = [NSView new];

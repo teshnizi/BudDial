@@ -76,7 +76,7 @@ No. Speech becomes text on your Mac with <a href="https://github.com/ggml-org/wh
 <details>
 <summary><b>It got a word wrong.</b></summary>
 <br>
-Add the word to Settings → Speech → <b>Vocabulary</b> (about 20 words works best), or teach it a fix in <b>Replacements</b>. A quieter room or sitting a little closer helps more than any setting. More tips in <a href="docs/troubleshooting.md">troubleshooting</a>.
+Add the word to Settings → Words → <b>Vocabulary</b> (about 20 words works best), or teach it a fix in <b>Replacements</b>. A quieter room or sitting a little closer helps more than any setting. More tips in <a href="docs/troubleshooting.md">troubleshooting</a>.
 </details>
 
 <details>

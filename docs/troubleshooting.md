@@ -8,13 +8,13 @@
 | The pill says "Nothing to undo" | Undo removes what BudDial typed since your last Return. It also stops if you typed or clicked since, because the cursor may have moved. |
 | Undo doesn't work in a loud room | Background noise can sound like speech. Say "Scratch that" instead. |
 | Text is copied but not typed | Allow Accessibility for BudDial in System Settings → Privacy & Security. |
-| The orange microphone dot is always on | That is **Instant start**: BudDial keeps the last few seconds of audio in memory so your first words are not cut off. Turn it off in Settings if you prefer. |
+| The orange microphone dot is always on | That is **Instant start**: BudDial keeps the last few seconds of audio in memory so your first words are not cut off. Turn it off in Settings → Speech, and the mic opens only while you hold the bud or key; words you start saying before the press may be cut. |
 | "Apple could not verify BudDial" | Expected for the downloaded app: see [opening it the first time](install.md#download-the-app). The Homebrew install avoids it. |
 
 ## Getting good results
 
-- **Teach it your words.** Settings → Speech → **Vocabulary**: names and terms you say, like `Claude Code, Codex, GitHub`. About 20 words works best; a long list dilutes the hint.
-- **Fix words it still gets wrong.** Settings → Speech → **Replacements**: "cloud coat" → "Claude Code". The corrected spelling is also added to the vocabulary.
+- **Teach it your words.** Settings → Words → **Vocabulary**: names and terms you say, like `Claude Code, Codex, GitHub`. About 20 words works best; a long list dilutes the hint.
+- **Fix words it still gets wrong.** Settings → Words → **Replacements**: "cloud coat" → "Claude Code". The corrected spelling is also added to the vocabulary.
 - **Mind the room.** Your voice only has to beat the background noise at the Mac's microphone. A quieter room or sitting a little closer helps more than any setting.
 - **Talk toward your Mac.** The AirPod is only the button; the Mac's microphone does the listening.
 
